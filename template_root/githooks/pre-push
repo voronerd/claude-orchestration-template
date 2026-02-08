@@ -1,0 +1,201 @@
+#!/bin/bash
+#
+# Git pre-push hook: Secret detection and @code-sentinel review enforcement
+#
+# This hook prevents pushing commits that:
+# 1. Contain potential secrets (API keys, passwords, tokens, private keys)
+# 2. Have not been reviewed by @code-sentinel
+#
+# Bypass: git push --no-verify
+#   NOTE: Bypasses cannot be logged from within this hook since --no-verify
+#   skips the hook entirely. For bypass auditing, use the wrapper script:
+#   ./scripts/git-push-safe.sh [args]  (logs bypasses to /tmp/security-bypass.log)
+#
+# Exit codes:
+#   0 - Allow push (all checks pass)
+#   1 - Block push (secrets found or missing review)
+
+set -euo pipefail
+
+# Configuration
+# SECURITY: Using user home directory instead of /tmp to prevent symlink attacks
+REVIEW_LOG="$HOME/.claude-project/logs/code-sentinel-reviews.log"
+BYPASS_LOG="$HOME/.claude-project/logs/security-bypass.log"
+
+# WARNING: The review log could be forged by anyone with write access to the user's
+# home directory. For high-security environments, consider adding cryptographic
+# signing (e.g., GPG signatures) to the review log entries.
+
+ZERO_OID="0000000000000000000000000000000000000000"
+
+# Secret detection patterns (grep -iE compatible)
+SECRET_PATTERN='sk-[a-zA-Z0-9]{20,}|api_key[=:]["'"'"']?[a-zA-Z0-9]|apiKey[=:]["'"'"']?[a-zA-Z0-9]|API_KEY[=:]["'"'"']?[a-zA-Z0-9]|password[=:]["'"'"']?[^$]|passwd[=:]["'"'"']?[^$]|pwd[=:]["'"'"']?[^$]|token[=:]["'"'"']?[a-zA-Z0-9]|[Bb]earer [a-zA-Z0-9]|Authorization:[[:space:]]*[a-zA-Z0-9]|BEGIN[[:space:]]+(RSA|DSA|EC|OPENSSH|PGP)?[[:space:]]*PRIVATE KEY|AKIA[0-9A-Z]{16}|aws_secret[_]?access[_]?key'
+
+# Files to always skip (binary, generated, etc.)
+SKIP_PATTERN='\.(png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|pdf|zip|tar|gz|pyc|pyo|so|dll|exe)$'
+
+# Track issues found
+SECRETS_FOUND=0
+UNREVIEWED_COMMITS=()
+SECRET_FILES=()
+
+# Remote info (for logging)
+REMOTE_NAME="${1:-origin}"
+REMOTE_URL="${2:-unknown}"
+
+#------------------------------------------------------------------------------
+# Functions
+#------------------------------------------------------------------------------
+
+# For bypass logging, use ./scripts/git-push-safe.sh instead of 'git push'
+
+check_commit_reviewed() {
+    local commit="$1"
+    # Log format: COMMIT_HASH|TIMESTAMP|RESULT|REVIEWER
+    # Match commit hash at start, then any timestamp, then PASS
+    if [[ -f "$REVIEW_LOG" ]] && grep -q "^${commit}|[^|]*|PASS|" "$REVIEW_LOG" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+scan_diff_for_secrets() {
+    local diff_content="$1"
+    local commit="$2"
+
+    # Only scan added lines (lines starting with +, but not +++ header)
+    local added_lines
+    added_lines=$(echo "$diff_content" | grep -E '^\+[^+]' | grep -v '^\+\+\+' || true)
+
+    if [[ -z "$added_lines" ]]; then
+        return 0
+    fi
+
+    # Check for secret patterns (case insensitive)
+    local matches
+    matches=$(echo "$added_lines" | grep -iE "$SECRET_PATTERN" 2>/dev/null || true)
+
+    if [[ -n "$matches" ]]; then
+        # Get the files changed in this commit
+        local files
+        files=$(echo "$diff_content" | grep -E '^\+\+\+ b/' | sed 's/^\+\+\+ b\///' | grep -vE "$SKIP_PATTERN" || true)
+
+        if [[ -n "$files" ]]; then
+            SECRETS_FOUND=1
+            while IFS= read -r file; do
+                SECRET_FILES+=("$commit:$file")
+            done <<< "$files"
+        fi
+    fi
+}
+
+print_secret_warning() {
+    echo ""
+    echo "=========================================="
+    echo "  PUSH BLOCKED: Potential Secrets Found"
+    echo "=========================================="
+    echo ""
+    echo "The following commits/files contain patterns that look like secrets:"
+    echo ""
+    for entry in "${SECRET_FILES[@]}"; do
+        echo "  - $entry"
+    done
+    echo ""
+    echo "Detected patterns include: API keys, passwords, tokens, private keys"
+    echo ""
+    echo "To fix:"
+    echo "  1. Remove the secrets from the code"
+    echo "  2. Use environment variables or a secrets manager"
+    echo "  3. If this is a false positive, use: git push --no-verify"
+    echo "     (bypass will be logged to $BYPASS_LOG)"
+    echo ""
+}
+
+print_review_warning() {
+    echo ""
+    echo "=========================================="
+    echo "  PUSH BLOCKED: Missing Security Review"
+    echo "=========================================="
+    echo ""
+    echo "The following commits have not been reviewed by @code-sentinel:"
+    echo ""
+    for commit in "${UNREVIEWED_COMMITS[@]}"; do
+        # Show commit summary
+        git log --oneline -1 "$commit" 2>/dev/null | sed 's/^/  /'
+    done
+    echo ""
+    echo "To fix:"
+    echo "  1. Ask the Lead Engineer to run @code-sentinel on your changes"
+    echo "  2. The review will be logged to $REVIEW_LOG"
+    echo "  3. After review passes, push again"
+    echo ""
+    echo "Or bypass with: git push --no-verify"
+    echo "  (bypass will be logged to $BYPASS_LOG)"
+    echo ""
+}
+
+#------------------------------------------------------------------------------
+# Main
+#------------------------------------------------------------------------------
+
+# Read refs from stdin
+ALL_COMMITS=()
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+    # Skip branch deletions
+    if [[ "$local_oid" == "$ZERO_OID" ]]; then
+        continue
+    fi
+
+    # Determine commit range
+    if [[ "$remote_oid" == "$ZERO_OID" ]]; then
+        # New branch - check all commits (limit to reasonable number)
+        commits=$(git rev-list --max-count=50 "$local_oid" 2>/dev/null || true)
+    else
+        # Existing branch - check new commits only
+        commits=$(git rev-list "$remote_oid..$local_oid" 2>/dev/null || true)
+    fi
+
+    if [[ -z "$commits" ]]; then
+        continue
+    fi
+
+    # Process each commit
+    while IFS= read -r commit; do
+        [[ -z "$commit" ]] && continue
+        ALL_COMMITS+=("$commit")
+
+        # Check 1: Scan for secrets in diff
+        diff_content=$(git diff-tree -p "$commit" 2>/dev/null || true)
+        if [[ -n "$diff_content" ]]; then
+            scan_diff_for_secrets "$diff_content" "$commit"
+        fi
+
+        # Check 2: Verify @code-sentinel review
+        if ! check_commit_reviewed "$commit"; then
+            UNREVIEWED_COMMITS+=("$commit")
+        fi
+
+    done <<< "$commits"
+done
+
+# Report results
+EXIT_CODE=0
+
+if [[ $SECRETS_FOUND -eq 1 ]]; then
+    print_secret_warning
+    EXIT_CODE=1
+fi
+
+if [[ ${#UNREVIEWED_COMMITS[@]} -gt 0 ]]; then
+    print_review_warning
+    EXIT_CODE=1
+fi
+
+# Success message if all checks pass
+if [[ $EXIT_CODE -eq 0 ]]; then
+    echo "Pre-push checks passed: No secrets detected, all commits reviewed."
+fi
+
+exit $EXIT_CODE

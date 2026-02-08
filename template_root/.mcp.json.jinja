@@ -1,0 +1,53 @@
+{
+  "mcpServers": {
+{% if has_local_llm %}
+    "ollama": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "ollama-mcp"
+      ],
+      "env": {
+        "OLLAMA_HOST": "{{ ollama_endpoint }}"
+      }
+    }{% if include_multi_model_overseer %},{% endif %}
+
+{% endif %}
+{% if include_multi_model_overseer %}
+    "gemini": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@rlabs-inc/gemini-mcp"
+      ],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "VERBOSE": "true"
+      }
+    },
+    "openai": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PROJECT_ROOT}/mcp-servers/openai-mcp/dist/index.js"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+      }
+    }{% if include_grok_agent %},
+    "grok": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PROJECT_ROOT}/mcp-servers/grok-mcp/dist/index.js"
+      ],
+      "env": {
+        "GROK_API_KEY": "${GROK_API_KEY}"
+      }
+    }{% endif %}
+
+{% endif %}
+  }
+}

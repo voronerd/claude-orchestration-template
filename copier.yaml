@@ -1,0 +1,214 @@
+# Claude Code Orchestration Template
+# https://copier.readthedocs.io/
+
+_min_copier_version: "9.0.0"
+_subdirectory: template_root
+_answers_file: .copier-answers.yml
+
+# Template version - update on each release
+_version: "0.1.0"
+
+# =============================================================================
+# Core Questions (Required)
+# =============================================================================
+
+project_name:
+  type: str
+  help: "Project name (used for directory and identifiers, e.g., 'my-ai-project')"
+  validator: "{% if not project_name or not (project_name | regex_search('^[a-zA-Z0-9_-]+$')) %}Project name must be alphanumeric with hyphens/underscores only (no spaces or special chars){% endif %}"
+
+project_description:
+  type: str
+  help: "Brief project description"
+  default: "Claude Code orchestrated project"
+
+admin_username:
+  type: str
+  help: "Primary admin username for this project"
+  default: "{{ _copier_conf.user }}"
+
+# =============================================================================
+# Existing Project Detection
+# =============================================================================
+# Skip infrastructure questions for projects with existing .env files
+
+existing_project:
+  type: bool
+  default: false
+  help: "Updating an existing project with a .env file? (Yes = skip infrastructure config)"
+
+# =============================================================================
+# Infrastructure Configuration
+# =============================================================================
+
+has_local_llm:
+  type: bool
+  default: true
+  help: "Do you have a local LLM server (Ollama, vLLM)?"
+  when: "{{ not existing_project }}"
+
+ollama_endpoint:
+  type: str
+  default: "http://localhost:11434"
+  help: "Ollama API endpoint URL"
+  when: "{{ not existing_project and has_local_llm }}"
+
+primary_coding_model:
+  type: str
+  default: ""
+  help: "Default model for coding tasks (e.g., 'llama3.1:8b', 'codellama:13b', 'qwen2.5-coder:7b')"
+  when: "{{ not existing_project and has_local_llm }}"
+
+has_deployment_target:
+  type: bool
+  default: false
+  help: "Do you have a deployment target (hypervisor/server) for pushing builds?"
+  when: "{{ not existing_project }}"
+
+deploy_host:
+  type: str
+  default: "localhost"
+  help: "Deployment server hostname/IP (for scp/ssh)"
+  when: "{{ not existing_project and has_deployment_target }}"
+  validator: "{% if not (deploy_host | regex_search('^[a-zA-Z0-9.-]+$')) %}Invalid hostname: only alphanumeric, dots, hyphens allowed{% endif %}"
+
+deploy_user:
+  type: str
+  default: "deploy"
+  help: "SSH user for deployment (avoid root if possible)"
+  when: "{{ not existing_project and has_deployment_target }}"
+  validator: "{% if not (deploy_user | regex_search('^[a-zA-Z0-9_-]+$')) %}Invalid username: only alphanumeric, underscores, hyphens allowed{% endif %}"
+
+deploy_container_id:
+  type: str
+  default: "101"
+  help: "Container ID for Proxmox pct exec (if using LXC)"
+  when: "{{ not existing_project and has_deployment_target }}"
+  validator: "{% if not (deploy_container_id | regex_search('^[0-9]+$')) %}Container ID must be numeric{% endif %}"
+
+health_check_url:
+  type: str
+  default: "http://localhost:8081/health"
+  help: "Health check endpoint URL after deployment"
+  when: "{{ not existing_project and has_deployment_target }}"
+  validator: "{% if not (health_check_url | regex_search('^https?://[a-zA-Z0-9._:/-]+$')) %}Invalid URL: must be http/https with valid characters{% endif %}"
+
+# =============================================================================
+# Advanced Configuration Toggle
+# =============================================================================
+# Most users want all agents and features enabled. Only ask individual
+# questions if they want to customize.
+
+customize_agents:
+  type: bool
+  default: false
+  help: "Customize which agents/features to include? (No = use recommended defaults)"
+
+# =============================================================================
+# Agent Features (Only shown if customize_agents is true)
+# =============================================================================
+
+include_multi_model_overseer:
+  type: bool
+  default: false
+  help: "Include @overseer multi-model review panel? (requires Gemini + OpenAI API keys)"
+  when: "{{ customize_agents }}"
+
+include_grok_agent:
+  type: bool
+  default: false
+  help: "Include Grok devil's advocate agent? (requires XAI_API_KEY)"
+  when: "{{ customize_agents and include_multi_model_overseer }}"
+
+include_debug_agent:
+  type: bool
+  default: true
+  help: "Include @debug agent with Ralph Wiggum pattern?"
+  when: "{{ customize_agents }}"
+
+include_ralph_plugin:
+  type: bool
+  default: true
+  help: "Include Ralph Wiggum iterative loop plugin?"
+  when: "{{ customize_agents }}"
+
+include_integration_check:
+  type: bool
+  default: true
+  help: "Include @integration-check to verify code wiring?"
+  when: "{{ customize_agents }}"
+
+include_janitor:
+  type: bool
+  default: true
+  help: "Include @janitor cleanup agent?"
+  when: "{{ customize_agents }}"
+
+# =============================================================================
+# Development Environment (Only shown if customize_agents is true)
+# =============================================================================
+
+include_devcontainer:
+  type: bool
+  default: true
+  help: "Include DevContainer configuration?"
+  when: "{{ customize_agents }}"
+
+include_pre_commit:
+  type: bool
+  default: true
+  help: "Include pre-commit hooks for secret scanning?"
+  when: "{{ customize_agents }}"
+
+# =============================================================================
+# Task System (Only shown if customize_agents is true)
+# =============================================================================
+
+enable_task_system:
+  type: bool
+  default: true
+  help: "Include task management system (tasks/master.md)?"
+  when: "{{ customize_agents }}"
+
+enable_cost_tracking:
+  type: bool
+  default: true
+  help: "Track API costs via hooks?"
+  when: "{{ customize_agents }}"
+
+# =============================================================================
+# Exclusions - Never overwrite user-owned files
+# =============================================================================
+
+_exclude:
+  # User hook extensions
+  - ".claude/hooks/*.d/*.sh"
+  - ".claude/hooks/*.d/*.py"
+  # User task data
+  - "tasks/detail/*"
+  - "tasks/done/*"
+  # Secrets and environment
+  - ".env"
+  - "*.age"
+  - "secrets.yaml"
+  # Build artifacts
+  - "*.pyc"
+  - "__pycache__"
+  - "node_modules"
+  - ".venv"
+  - "venv"
+  # Git
+  - ".git"
+  # IDE
+  - ".idea"
+  - ".vscode/settings.json"
+  # State files
+  - ".claude/.state/*"
+
+# =============================================================================
+# Tasks to run after copy
+# =============================================================================
+
+_tasks:
+  - command: "chmod +x {{ _copier_conf.dst_path }}/scripts/*.sh 2>/dev/null || true"
+  - command: "chmod +x {{ _copier_conf.dst_path }}/.claude/hooks/*.sh 2>/dev/null || true"
