@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-ALIAS_LINE="alias cc='claude'"
+ALIAS_LINE="alias cc='claude --allow-dangerously-skip-permissions'"
 SHELL_RC=""
 
 # Detect shell config file
