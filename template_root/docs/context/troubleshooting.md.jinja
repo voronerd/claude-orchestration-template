@@ -1,9 +1,0 @@
-# Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-{% if has_local_llm %}
-| No response | Ollama down | Check `{{ ollama_endpoint }}/api/tags` |
-| Slow response | Model cold start | Wait 30s, or keep model warm |
-{% endif %}
-| Tool errors | Schema issues | Check tool documentation |

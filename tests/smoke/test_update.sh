@@ -3,7 +3,7 @@
 
 set -e
 
-TEMPLATE_DIR="${TEMPLATE_DIR:-$(dirname "$0")/../..}"
+TEMPLATE_DIR="${TEMPLATE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TEST_DIR="${TEST_DIR:-/tmp/update-test-$$}"
 
 echo "=== Smoke Test: Copier Update ==="
@@ -40,7 +40,7 @@ copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
     --data include_grok_agent=false \
     --data has_deployment_target=false
 
-cd "$TEST_DIR/update-test"
+cd "$TEST_DIR"
 echo "   OK: Project created"
 
 # Step 2: Add user customizations
@@ -88,7 +88,7 @@ copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
     --data include_grok_agent=false \
     --data has_deployment_target=false
 
-cd "$TEST_DIR/update-test"
+cd "$TEST_DIR"
 echo "   OK: Update completed"
 
 # Step 4: Verify customizations preserved
