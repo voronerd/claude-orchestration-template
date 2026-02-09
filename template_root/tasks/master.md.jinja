@@ -1,4 +1,13 @@
-# Task Master List
+# {{ project_name }} - Task Master List
+
+{% if enable_task_system %}
+## Pipeline Status
+
+- [Features](tasks/pipelines/features.md)
+- [Infrastructure](tasks/pipelines/infrastructure.md)
+- [Security](tasks/pipelines/security.md)
+- [Agents](tasks/pipelines/agents.md)
+{% endif %}
 
 ## Priority Legend
 - **P0**: Critical - blocks everything

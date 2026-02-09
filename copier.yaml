@@ -187,6 +187,8 @@ _exclude:
   # User task data
   - "tasks/detail/*"
   - "tasks/done/*"
+  - "tasks/master.md"
+  - "tasks/pipelines/*"
   # Secrets and environment
   - ".env"
   - "*.age"

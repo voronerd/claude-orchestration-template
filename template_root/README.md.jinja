@@ -1,0 +1,57 @@
+# {{ project_name }}
+
+{{ project_description }}
+
+## Quick Start
+
+1. Clone the repository:
+   ```bash
+   git clone <your-repo-url>
+   cd {{ project_name }}
+   ```
+
+2. Install dependencies (if applicable):
+   ```bash
+   # Add your setup commands here
+   ```
+
+3. Start working:
+   ```bash
+   claude
+   ```
+
+## Project Structure
+
+```text
+{{ project_name }}/
+├── .claude/           # Claude Code configuration (agents, hooks, skills)
+├── tasks/             # Task management system
+│   ├── master.md      # Backlog and status board
+│   ├── pipelines/     # Pipeline tracking files
+│   ├── detail/        # Active task specifications
+│   ├── done/          # Completed task archive
+│   └── templates/     # Task templates
+├── docs/              # Documentation
+├── scripts/           # Utility scripts
+├── CLAUDE.md          # AI assistant instructions
+└── README.md          # This file
+```
+
+## Task Management
+
+This project uses a structured task management system.
+See [tasks/master.md](tasks/master.md) for the current backlog and priorities.
+
+### Pipelines
+
+- [Features](tasks/pipelines/features.md) - Product capabilities and feature work
+- [Infrastructure](tasks/pipelines/infrastructure.md) - Tooling, CI/CD, and infrastructure
+- [Security](tasks/pipelines/security.md) - Security audits and hardening
+- [Agents](tasks/pipelines/agents.md) - Agent configuration and tuning
+
+## Contributing
+
+1. Check `tasks/master.md` for available tasks
+2. Create a detail spec in `tasks/detail/` before coding
+3. Follow the delegation workflow described in `CLAUDE.md`
+4. Commit with descriptive messages and move completed tasks to `tasks/done/`
