@@ -1,86 +1,72 @@
-#!/bin/bash
-# Claude Code Status Line - Context awareness for proactive handoffs
-# Format: Model ● XX% | $X.XX mm:ss/mm:ss +N/-N
-#         ^ctx%    ^cost ^total/api   ^churn
-#
-# Color thresholds:
-#   Green  < 60%  - Plenty of room
-#   Yellow < 80%  - Start thinking about handoff
-#   Red    >= 80% - Prepare handoff NOW
+#!/usr/bin/env python3
+"""Claude Code Status Line - Context awareness for proactive handoffs
+Format: Model XX% $X.XX mm:ss/mm:ss +N/-N
 
-input=$(cat)
+Color thresholds:
+  Green  < 60%  - Plenty of room
+  Yellow < 80%  - Start thinking about handoff
+  Red    >= 80% - Prepare handoff NOW
+"""
+import json, sys
 
-# Helper: ms to mm:ss
-ms_to_mmss() {
-    local ms=$1
-    local secs=$((ms / 1000))
-    printf "%d:%02d" $((secs / 60)) $((secs % 60))
-}
-
-# Extract model
-MODEL=$(echo "$input" | jq -r '.model.display_name // .model // "?"')
-
-# Context percentage
-PERCENT=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-if [ -z "$PERCENT" ]; then
-    TOTAL=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
-    USED=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
-    if [ "$TOTAL" -gt 0 ] 2>/dev/null; then
-        PERCENT=$(echo "scale=1; $USED * 100 / $TOTAL" | bc 2>/dev/null || echo "0")
-    else
-        PERCENT="0"
-    fi
-fi
-PERCENT_INT=$(printf "%.0f" "$PERCENT" 2>/dev/null || echo "0")
-
-# Cost (truncated to 2 decimal places)
-COST=$(echo "$input" | jq -r '.cost.total_cost_usd // .cost // 0')
-if [ -n "$COST" ] && [ "$COST" != "null" ] && [ "$COST" != "0" ]; then
-    COST_DISPLAY=$(printf "%.2f" "$COST" 2>/dev/null || echo "$COST")
-    COST_DISPLAY="\$${COST_DISPLAY}"
-else
-    COST_DISPLAY=""
-fi
-
-# Duration: total/api in mm:ss
-TOTAL_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
-API_MS=$(echo "$input" | jq -r '.cost.total_api_duration_ms // 0')
-if [ "$TOTAL_MS" -gt 0 ] 2>/dev/null; then
-    DURATION_DISPLAY="$(ms_to_mmss $TOTAL_MS)/$(ms_to_mmss $API_MS)"
-else
-    DURATION_DISPLAY=""
-fi
-
-# Churn: +added/-removed
-ADDED=$(echo "$input" | jq -r '.cost.total_lines_added // 0')
-REMOVED=$(echo "$input" | jq -r '.cost.total_lines_removed // 0')
-if [ "$ADDED" -gt 0 ] 2>/dev/null || [ "$REMOVED" -gt 0 ] 2>/dev/null; then
-    CHURN_DISPLAY="+${ADDED}/-${REMOVED}"
-else
-    CHURN_DISPLAY=""
-fi
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print("?")
+    sys.exit(0)
 
 # Colors
-RED="\033[0;31m"
-YELLOW="\033[0;33m"
-GREEN="\033[0;32m"
-CYAN="\033[0;36m"
-DIM="\033[2m"
-RESET="\033[0m"
+RED, YELLOW, GREEN, CYAN, DIM, RESET = (
+    "\033[0;31m", "\033[0;33m", "\033[0;32m", "\033[0;36m", "\033[2m", "\033[0m"
+)
+
+def ms_to_mmss(ms):
+    secs = int(ms) // 1000
+    return f"{secs // 60}:{secs % 60:02d}"
+
+def get(obj, *keys, default=None):
+    for k in keys:
+        if isinstance(obj, dict):
+            obj = obj.get(k)
+        else:
+            return default
+    return obj if obj is not None else default
+
+# Model
+model_info = data.get("model", {})
+if isinstance(model_info, dict):
+    model = model_info.get("display_name", model_info.get("id", "?"))
+else:
+    model = str(model_info) if model_info else "?"
+
+# Context percentage
+pct = get(data, "context_window", "used_percentage", default=None)
+if pct is None:
+    total = get(data, "context_window", "context_window_size", default=200000)
+    used = get(data, "context_window", "total_input_tokens", default=0)
+    pct = (used * 100 / total) if total > 0 else 0
+pct_int = int(round(float(pct)))
+
+# Cost
+cost = get(data, "cost", "total_cost_usd", default=0)
+cost_str = f" {DIM}${float(cost):.2f}{RESET}" if cost and float(cost) > 0 else ""
+
+# Duration
+total_ms = get(data, "cost", "total_duration_ms", default=0)
+api_ms = get(data, "cost", "total_api_duration_ms", default=0)
+dur_str = f" {DIM}{ms_to_mmss(total_ms)}/{ms_to_mmss(api_ms)}{RESET}" if int(total_ms) > 0 else ""
+
+# Churn
+added = get(data, "cost", "total_lines_added", default=0)
+removed = get(data, "cost", "total_lines_removed", default=0)
+churn_str = f" {DIM}+{added}/-{removed}{RESET}" if int(added) > 0 or int(removed) > 0 else ""
 
 # Context color
-if [ "$PERCENT_INT" -ge 80 ] 2>/dev/null; then
-    COLOR="$RED"; INDICATOR="!"
-elif [ "$PERCENT_INT" -ge 60 ] 2>/dev/null; then
-    COLOR="$YELLOW"; INDICATOR="*"
-else
-    COLOR="$GREEN"; INDICATOR=""
-fi
+if pct_int >= 80:
+    color, indicator = RED, "!"
+elif pct_int >= 60:
+    color, indicator = YELLOW, "*"
+else:
+    color, indicator = GREEN, ""
 
-# Build output - only show non-empty segments
-OUT="${CYAN}${MODEL}${RESET} ${COLOR}${INDICATOR}${PERCENT_INT}%${RESET}"
-[ -n "$COST_DISPLAY" ] && OUT="$OUT ${DIM}${COST_DISPLAY}${RESET}"
-[ -n "$DURATION_DISPLAY" ] && OUT="$OUT ${DIM}${DURATION_DISPLAY}${RESET}"
-[ -n "$CHURN_DISPLAY" ] && OUT="$OUT ${DIM}${CHURN_DISPLAY}${RESET}"
-
-echo -e "$OUT"
+print(f"{CYAN}{model}{RESET} {color}{indicator}{pct_int}%{RESET}{cost_str}{dur_str}{churn_str}")
