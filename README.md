@@ -45,6 +45,24 @@ cd ~/my-project
 claude
 ```
 
+### Important: .env File Location
+
+**BEFORE running copier**, you must have a `.env` file in one of these locations:
+1. **Inside the template directory**: `~/claude-orchestration-template/.env` (recommended)
+2. **Your home directory**: `~/.env` (fallback)
+
+The template needs to read your API keys during project generation.
+
+**If updating an existing project:**
+- Answer "Yes" to "Updating an existing project?" to skip infrastructure questions
+- Your existing `.env` in the target project will be preserved
+
+**If creating a new project:**
+- Answer "No" to configure infrastructure from scratch
+- The bootstrap script will create `.env` from `.env.template`
+
+---
+
 Type in "run onboarding" to kick off interactive setup.
 
 That's it. The `setup.sh` script installs prerequisites (pipx, copier, etc.) and the `bootstrap.sh` sets up your project.

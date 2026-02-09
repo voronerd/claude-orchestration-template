@@ -8,6 +8,43 @@ cd "$PROJECT_ROOT"
 echo "=== Bootstrapping {{ project_name }} ==="
 echo "Project root: $PROJECT_ROOT"
 
+# Validate .env availability for new projects
+{% if not existing_project %}
+# User indicated this is a NEW project, so we need .env from template or home directory
+TEMPLATE_ENV_FOUND=false
+HOME_ENV_FOUND=false
+
+# Check common template locations
+if [[ -f ~/claude-orchestration-template/.env ]]; then
+    TEMPLATE_ENV_FOUND=true
+fi
+
+if [[ -f ~/.env ]]; then
+    HOME_ENV_FOUND=true
+fi
+
+if [[ "$TEMPLATE_ENV_FOUND" == "false" && "$HOME_ENV_FOUND" == "false" ]]; then
+    echo ""
+    echo "ERROR: No .env file found for new project setup"
+    echo ""
+    echo "Please create a .env file in one of these locations:"
+    echo "  1. ~/claude-orchestration-template/.env (recommended)"
+    echo "  2. ~/.env (fallback)"
+    echo ""
+    echo "Your .env should contain:"
+    echo "  ANTHROPIC_API_KEY=your-key-here"
+{% if include_multi_model_overseer %}
+    echo "  GEMINI_API_KEY=your-key-here"
+    echo "  OPENAI_API_KEY=your-key-here"
+{% endif %}
+    echo ""
+    echo "Alternatively, if you're updating an existing project,"
+    echo "re-run copier and answer 'Yes' to 'Updating existing project?'"
+    echo ""
+    exit 1
+fi
+{% endif %}
+
 # Create .env from template if it doesn't exist
 if [[ ! -f .env ]]; then
     if [[ -f .env.template ]]; then
