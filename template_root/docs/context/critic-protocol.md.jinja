@@ -1,0 +1,62 @@
+# The Critic Protocol (Multi-Model Validation)
+
+{% if include_multi_model_overseer %}
+You have access to multiple AI reviewers:
+
+| Agent | Focus | Models Used |
+|-------|-------|-------------|
+| @overseer | Architecture, integration, design | Gemini + OpenAI{% if include_grok_agent %} + Grok{% endif %} + Opus |
+| @code-sentinel | Security vulnerabilities | Gemini + OpenAI{% if include_grok_agent %} + Grok{% endif %} |
+| @gemini-overseer | Quick single-model checks | Gemini only |
+| @openai-overseer | Alternate single-model | OpenAI only |
+{% else %}
+You have access to AI reviewers:
+
+| Agent | Focus |
+|-------|-------|
+| @code-sentinel | Security vulnerabilities |
+| @gemini-overseer | Architecture and design |
+| @openai-overseer | Logic and flow |
+{% endif %}
+
+**Trigger 1: Architectural Review**
+BEFORE starting any complex feature (touching >3 files):
+{% if include_multi_model_overseer %}
+1. Draft your plan
+2. Call `@overseer` to review integration fit
+3. Adjust based on multi-model feedback
+{% else %}
+1. Draft your plan
+2. Call `@gemini-overseer` or `@openai-overseer` for review
+3. Adjust based on feedback
+{% endif %}
+
+**Trigger 2: Thought Loop Breaker**
+WHEN you notice:
+- Same error encountered 3+ times
+- Same tool called repeatedly, no progress
+- Reverting changes you just made
+
+THEN:
+{% if has_local_llm %}
+1. STOP and summarize what you've tried
+2. **FIRST (FREE)**: Call @local-orchestrator to analyze
+3. **IF stuck (PAID)**: Call @gemini-overseer or @openai-overseer
+{% if include_multi_model_overseer %}
+4. **IF still stuck (PREMIUM)**: Call @overseer for full panel
+{% endif %}
+{% else %}
+1. STOP and summarize what you've tried
+2. Call @gemini-overseer or @openai-overseer for fresh perspective
+{% if include_multi_model_overseer %}
+3. If needed, escalate to @overseer for full panel
+{% endif %}
+{% endif %}
+
+**Trigger 3: Security Checkpoint**
+WHEN writing code that handles:
+- API keys, tokens, passwords
+- File permissions
+- Network configuration
+
+Call `@code-sentinel` for security audit.

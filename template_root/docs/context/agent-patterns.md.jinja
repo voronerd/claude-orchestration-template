@@ -1,0 +1,24 @@
+# Agent Patterns (On-Demand and Parallel Execution)
+
+{% if has_local_llm %}
+## On-Demand Agent Invocation (@reviewer / @tester)
+
+@reviewer and @tester are invoked **on-demand**, not automatically. Other agents recommend them; the Hub decides.
+
+| When to Invoke | Agent | Trigger |
+|----------------|-------|---------|
+| After code generation | @reviewer | @local-coder recommends (>20 LOC or new public API) |
+| After code review | @tester | Generate tests for reviewed code |
+| After bug fix | @tester | @debug recommends (regression test) |
+
+**Order matters:** @reviewer BEFORE @tester (review code first, then write tests on clean code).
+{% endif %}
+
+## Parallel Agent Execution
+
+When tasks are independent, spawn multiple agents in a single message for 2-3x speedup.
+
+**Parallelize:** Independent file reads, multi-model reviews, tests for separate modules
+**Serialize:** Task B needs Task A's output, same file modifications, build -> test chains
+
+**Cost note:** Parallel agents burn tokens simultaneously. Consider if parallelism is worth the cost for expensive agents.

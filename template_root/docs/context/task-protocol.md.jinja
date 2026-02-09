@@ -1,0 +1,33 @@
+{% if enable_task_system %}
+# Task Management Protocol
+
+## Phase 1: Planning (MANDATORY)
+1. **Select Task**: Move item in `tasks/master.md` to `## In Progress`.
+2. **Create Spec**: Copy `tasks/templates/task_spec.md` to `tasks/detail/[feature-name].md`.
+3. **Fill Requirements**: Analyze requirements and propose architecture.
+4. **Define Success**: Write specific success criteria. **DO NOT CODE YET.**
+5. **Review**: Briefly reflect: "Does this plan actually solve the problem?"
+
+## Phase 2: Execution (Chunked)
+1. **Test First**: Create the failing test or verification script.
+2. **Implement**: Write code in small chunks.
+{% if include_integration_check %}
+3. **Integration Checkpoint**: After creating >2 files, verify import exists in calling code.
+{% endif %}
+4. **Log**: Update the "Execution Log" in the detail file.
+
+## Investigation-First Protocol
+
+BEFORE building any fix for "tests pass but production fails":
+1. Get a REAL failing input sample (logs, user message, etc.)
+2. Print `repr()` or hex dump of actual input
+3. Compare to test input
+4. ONLY THEN design the fix
+
+This prevents building solutions to the wrong problem.
+
+## Phase 3: Completion
+1. **Verify**: All tests pass
+2. **Commit**: `git add . && git commit -m "feat: [task] - [summary]"`
+3. **Archive**: Move detail file to `tasks/done/`, update master list
+{% endif %}
