@@ -9,6 +9,18 @@ echo "  Claude Code Orchestration Template Setup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# Fix broken apt source lists (e.g., from interrupted previous runs)
+if command -v apt &> /dev/null; then
+    for f in /etc/apt/sources.list.d/*.list; do
+        [ -f "$f" ] || continue
+        # Remove empty source list files (common from interrupted installs)
+        if [ ! -s "$f" ]; then
+            echo "Removing empty apt source list: $f"
+            sudo rm -f "$f"
+        fi
+    done
+fi
+
 # Check for Python
 if ! command -v python3 &> /dev/null; then
     echo "Python 3 not found. Please install it first."
@@ -88,9 +100,14 @@ echo "Claude Code installed"
 if ! command -v gh &> /dev/null; then
     echo "Installing GitHub CLI..."
     if command -v apt &> /dev/null; then
-        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-        sudo apt update && sudo apt install -y gh
+        if curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null; then
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update && sudo apt install -y gh
+        else
+            echo "Warning: Could not download GitHub CLI keyring. Skipping gh installation."
+            # Clean up any partial file
+            sudo rm -f /etc/apt/sources.list.d/github-cli.list
+        fi
     fi
 fi
 echo "GitHub CLI installed"
