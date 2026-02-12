@@ -33,34 +33,37 @@ admin_username:
 # =============================================================================
 # Existing Project Detection
 # =============================================================================
-# Skip infrastructure questions for projects with existing .env files
+# Skip deployment questions for projects with existing .env files.
+# LLM config is always asked because .mcp.json is re-rendered on every update.
 
 existing_project:
   type: bool
   default: false
-  help: "Updating an existing project with a .env file? (Yes = skip infrastructure config)"
+  help: "Updating an existing project? (Yes = skip deployment config, LLM config always asked)"
 
 # =============================================================================
 # Infrastructure Configuration
 # =============================================================================
+# NOTE: LLM questions are always asked (even for existing projects) because
+# .mcp.json is re-rendered on every copier update. Skipping these causes the
+# template to silently use defaults (e.g. localhost), breaking remote Ollama.
 
 has_local_llm:
   type: bool
   default: true
   help: "Do you have a local LLM server (Ollama, vLLM)?"
-  when: "{{ not existing_project }}"
 
 ollama_endpoint:
   type: str
   default: "http://localhost:11434"
   help: "Ollama API endpoint URL"
-  when: "{{ not existing_project and has_local_llm }}"
+  when: "{{ has_local_llm }}"
 
 primary_coding_model:
   type: str
   default: ""
   help: "Default model for coding tasks (e.g., 'llama3.1:8b', 'codellama:13b', 'qwen2.5-coder:7b')"
-  when: "{{ not existing_project and has_local_llm }}"
+  when: "{{ has_local_llm }}"
 
 has_deployment_target:
   type: bool
