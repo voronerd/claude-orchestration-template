@@ -11,4 +11,7 @@ fi
 if echo "$INPUT" | grep -qiE "rm\s+-rf|chmod\s+.*777|eval\s*\("; then
   BLOCK=1
 fi
+if [ $BLOCK -eq 0 ]; then
+  echo "$INPUT"
+fi
 exit $BLOCK

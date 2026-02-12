@@ -3,7 +3,10 @@
 
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
-[[ -z "$COMMAND" ]] && exit 0
+if [[ -z "$COMMAND" ]]; then
+    echo "$INPUT"
+    exit 0
+fi
 
 # Fix 5: Project-scoped state
 STATE_DIR="${CLAUDE_STATE_DIR:-${HOME}/.claude/.state}"
@@ -74,4 +77,5 @@ if detect_code_write "$COMMAND" && ! agent_authorized; then
 fi
 
 echo "$(date +%Y-%m-%dT%H:%M:%S) CMD: ${COMMAND:0:200}" >> "$STATE_DIR/bash-commands.log" 2>/dev/null
+echo "$INPUT"
 exit 0

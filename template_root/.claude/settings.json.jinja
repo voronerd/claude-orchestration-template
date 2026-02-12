@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${PROJECT_ROOT:-.}/.claude/hooks/session-start.sh",
+            "command": "${PROJECT_ROOT:-.}/.claude/hooks/dispatcher-session-start.sh",
             "timeout": 5
           }
         ]
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${PROJECT_ROOT:-.}/.claude/hooks/user-prompt-submit.sh",
+            "command": "${PROJECT_ROOT:-.}/.claude/hooks/dispatcher-user-prompt-submit.sh",
             "timeout": 10
           }
         ]
@@ -28,11 +28,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|Bash|Task",
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
-            "command": "${PROJECT_ROOT:-.}/.claude/hooks/pre-tool-use.sh",
+            "command": "${PROJECT_ROOT:-.}/.claude/hooks/dispatcher-pre-tool-use.sh",
             "timeout": 10
           }
         ]
@@ -40,11 +40,11 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write{% if enable_cost_tracking %}|mcp__ollama__*|mcp__gemini__*|mcp__openai__*|mcp__grok__*{% endif %}",
+        "matcher": "Edit|Write{% if enable_cost_tracking %}|mcp__ollama__.*|mcp__gemini__.*|mcp__openai__.*|mcp__grok__.*{% endif %}",
         "hooks": [
           {
             "type": "command",
-            "command": "${PROJECT_ROOT:-.}/.claude/hooks/post-tool-use.sh",
+            "command": "${PROJECT_ROOT:-.}/.claude/hooks/dispatcher-post-tool-use.sh",
             "timeout": 10
           }
         ]
@@ -66,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${PROJECT_ROOT:-.}/.claude/hooks/subagent-stop.sh",
+            "command": "${PROJECT_ROOT:-.}/.claude/hooks/dispatcher-subagent-stop.sh",
             "timeout": 10
           }
         ]

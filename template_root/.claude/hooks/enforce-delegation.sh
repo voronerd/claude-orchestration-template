@@ -10,7 +10,10 @@ AGENT_LOG="$STATE_DIR/agent-usage.log"
 
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .file_path // .path // ""' 2>/dev/null)
 
-[[ -z "$FILE_PATH" || "$FILE_PATH" == "null" ]] && exit 0
+if [[ -z "$FILE_PATH" || "$FILE_PATH" == "null" ]]; then
+    echo "$INPUT"
+    exit 0
+fi
 
 # Fix 3: Resolve symlinks to prevent bypass
 RESOLVED_PATH=$(realpath -m "$FILE_PATH" 2>/dev/null || echo "$FILE_PATH")
@@ -19,6 +22,7 @@ FILE_PATH="$RESOLVED_PATH"
 # WHITELIST: System configuration
 if [[ "$FILE_PATH" =~ \.claude/ ]] || [[ "$FILE_PATH" =~ /\.claude/ ]] || \
    [[ "$FILE_PATH" =~ CLAUDE\.md$ ]] || [[ "$FILE_PATH" =~ settings\.json$ ]]; then
+    echo "$INPUT"
     exit 0
 fi
 
@@ -30,6 +34,7 @@ EXT="${FILE_PATH##*.}"
 # WHITELIST: Non-code files
 case "$EXT" in
     md|txt|log|csv|yaml|yml|json)
+        echo "$INPUT"
         exit 0
         ;;
 esac
@@ -42,6 +47,7 @@ if [[ "$EXT" =~ ^($CODE_EXTENSIONS)$ ]]; then
         # Fix 4: Validate content format (prevents touch spoofing)
         AGENT_RAN=$(grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*AGENT_COMPLETED" "$AGENT_LOG" 2>/dev/null | tail -1)
         if [[ -n "$AGENT_RAN" ]]; then
+            echo "$INPUT"
             exit 0
         fi
     fi
@@ -56,4 +62,5 @@ if [[ "$EXT" =~ ^($CODE_EXTENSIONS)$ ]]; then
     exit 2
 fi
 
+echo "$INPUT"
 exit 0

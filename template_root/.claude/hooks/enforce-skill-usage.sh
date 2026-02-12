@@ -34,7 +34,10 @@ fi
 if [[ "$TOOL_NAME" == "Write" ]]; then
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .file_path // ""' 2>/dev/null)
 
-    [[ -z "$FILE_PATH" || "$FILE_PATH" == "null" ]] && exit 0
+    if [[ -z "$FILE_PATH" || "$FILE_PATH" == "null" ]]; then
+        echo "$INPUT"
+        exit 0
+    fi
 
     # Resolve to absolute path for consistent matching
     RESOLVED_PATH=$(realpath -m "$FILE_PATH" 2>/dev/null || echo "$FILE_PATH")
@@ -53,9 +56,11 @@ if [[ "$TOOL_NAME" == "Write" ]]; then
         echo "  - Pre-flight teaming checks" >&2
         echo "  - Integration planning" >&2
         echo "============================================" >&2
+        echo "$INPUT"
         exit 0  # Warn only, don't block (skills need Write access)
     fi
 fi
 
 # All other cases: allow
+echo "$INPUT"
 exit 0
