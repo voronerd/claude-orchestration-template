@@ -232,18 +232,83 @@ ollama pull <your-preferred-model>  # e.g., qwen2.5-coder:32b, codellama:34b
 
 ## Updating from Template
 
-When the template is updated:
+### Standard Update (copier-created projects)
+
+If your project was created with `copier copy`, updating is straightforward:
 
 ```bash
-cd my-new-project
+cd my-project
 copier update --trust
 ```
 
-Your customizations in protected directories are preserved:
-- `.claude/hooks/*.d/` - Your custom hook extensions
-- `tasks/detail/` - Your active tasks
-- `tasks/done/` - Your completed tasks
-- `.env` - Your secrets
+Review changes, then commit:
+
+```bash
+git diff                    # Review what changed
+git add -A && git commit -m "chore: copier update from template"
+```
+
+### Adopting an Existing Project
+
+If your project was set up manually (not via `copier copy`), you can retroactively adopt it for future template updates:
+
+1. **Create `.copier-answers.yml`** in your project root:
+
+```yaml
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: <latest-template-commit-hash>
+_src_path: gh:voronerd/claude-orchestration-template
+_vcs_ref: <latest-template-commit-hash>
+project_name: my-project
+project_description: "My project description"
+admin_username: myuser
+existing_project: true
+customize_agents: false
+```
+
+2. **Get the latest template commit hash:**
+
+```bash
+git ls-remote https://github.com/voronerd/claude-orchestration-template.git HEAD
+```
+
+3. **Commit the answers file** (copier requires a clean repo):
+
+```bash
+git add .copier-answers.yml
+git commit -m "chore: add copier answers for template sync"
+```
+
+4. **Run the update:**
+
+```bash
+copier update --trust --defaults
+```
+
+The `--defaults` flag accepts all default answers without prompting. Drop it if you want to reconfigure options interactively.
+
+### What's Preserved During Updates
+
+Copier will never overwrite these user-owned files:
+
+| Path | Contents |
+|------|----------|
+| `tasks/detail/*`, `tasks/done/*` | Your active and completed tasks |
+| `tasks/master.md`, `tasks/pipelines/*` | Your task dashboard and backlogs |
+| `.env`, `*.age`, `secrets.yaml` | Your secrets and credentials |
+| `.claude/.state/*` | Session state files |
+| `.vscode/settings.json` | Your IDE settings |
+
+### Handling Conflicts
+
+If copier detects conflicts between your local changes and template updates:
+
+- **Agent files** (`.claude/agents/*.md`): Template wins — your local customizations should go in project-specific overrides, not agent files
+- **Hook scripts** (`.claude/hooks/*.sh`): Template wins for core hooks; put custom logic in `.d/` extension directories
+- **CLAUDE.md**: Template provides the base; add project-specific sections below the generated content
+- **Skills/commands**: New skills are added; existing ones are updated
+
+If you need to keep local modifications to a template-managed file, consider opening a PR to make the template more configurable instead.
 
 ## Extending Hooks
 
