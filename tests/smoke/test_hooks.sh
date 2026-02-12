@@ -3,10 +3,49 @@
 
 set -e
 
+TEMPLATE_DIR="${TEMPLATE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+TEST_DIR="${TEST_DIR:-/tmp/hooks-test-$$}"
+
+# Cleanup on exit
+cleanup() {
+    rm -rf "$TEST_DIR"
+}
+trap cleanup EXIT
+
 echo "=== Smoke Test: Hook Dispatchers ==="
 echo ""
 
-PROJECT_DIR="${1:-.}"
+if [[ -z "$1" ]]; then
+    echo "   Generating project from template..."
+    echo "   Template: $TEMPLATE_DIR"
+    echo "   Test dir: $TEST_DIR"
+    copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
+        --trust \
+        --data project_name=hooks-test \
+        --data project_description="Hook dispatcher test project" \
+        --data admin_username=testuser \
+        --data has_local_llm=true \
+        --data ollama_endpoint=http://localhost:11434 \
+        --data primary_coding_model=codellama:7b \
+        --data include_multi_model_overseer=false \
+        --data include_debug_agent=true \
+        --data include_integration_check=true \
+        --data include_janitor=true \
+        --data include_devcontainer=false \
+        --data include_pre_commit=false \
+        --data enable_task_system=true \
+        --data enable_cost_tracking=true \
+        --data existing_project=false \
+        --data customize_agents=false \
+        --data include_grok_agent=false \
+        --data has_deployment_target=false
+    PROJECT_DIR="$TEST_DIR"
+    echo "   OK: Project generated"
+else
+    PROJECT_DIR="$1"
+    echo "   Using existing project: $PROJECT_DIR"
+fi
+
 cd "$PROJECT_DIR"
 
 # Test 1: Dispatcher scripts exist and are executable

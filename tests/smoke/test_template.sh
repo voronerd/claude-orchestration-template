@@ -63,7 +63,6 @@ required_files=(
     ".claude/hooks/pre-tool-use.sh"
     ".env.template"
     "scripts/bootstrap.sh"
-    "tasks/master.md"
     "tasks/templates/task_spec.md"
     ".gitignore"
 )
