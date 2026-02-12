@@ -326,3 +326,19 @@ A well-configured subagent has:
 - Successfully tested on representative tasks
 - Model selection appropriate for task complexity (Sonnet for reasoning, Haiku for simple tasks)
 </success_criteria>
+
+<post_completion_menu>
+After agent creation completes, present:
+
+**Agent created successfully!**
+
+What's next?
+
+1. **Test the agent** — Invoke it with a sample task to verify it works
+2. **Create another agent** — Build a companion or related agent
+3. **Create a skill that uses this agent** — Wire it into a skill workflow
+4. **Done** — No further action needed
+
+If user chooses #1, invoke the new agent via Task tool with a simple test prompt.
+If user chooses #3, invoke `/create-agent-skills`.
+</post_completion_menu>

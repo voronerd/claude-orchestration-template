@@ -112,7 +112,8 @@ No segmentation benefit - execute entirely in main
 
 **For fully autonomous plans:**
 ```
-Use Task tool with subagent_type="general-purpose":
+Use Task tool with subagent_type="local-coder":
+> **Escalation:** Use `subagent_type="general-purpose"` only if the plan requires complex multi-file orchestration, web access, or non-code tasks (e.g., infrastructure provisioning, API integrations needing tool-heavy reasoning).
 
 Prompt: "Execute plan at .planning/phases/{phase}-{plan}-PLAN.md
 
@@ -183,7 +184,8 @@ For Pattern A (fully autonomous) and Pattern C (decision-dependent), skip this s
 
    B. If routing = Subagent:
       ```
-      Spawn Task tool with subagent_type="general-purpose":
+      Spawn Task tool with subagent_type="local-coder":
+      > **Escalation:** Use `subagent_type="general-purpose"` only if the plan requires complex multi-file orchestration, web access, or non-code tasks (e.g., infrastructure provisioning, API integrations needing tool-heavy reasoning).
 
       Prompt: "Execute tasks [task numbers/names] from plan at [plan path].
 

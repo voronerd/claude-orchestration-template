@@ -352,3 +352,18 @@ A working hook configuration has:
 - Reasonable timeout set (especially for external commands)
 - Executable permissions on script files if using file paths
 </success_criteria>
+
+<post_completion_menu>
+After hook creation completes, present:
+
+**Hook created successfully!**
+
+What's next?
+
+1. **Test the hook** — Trigger the event and verify the hook fires
+2. **Create another hook** — Build a complementary hook for another event
+3. **Create a skill that depends on this hook** — Wire it into a workflow
+4. **Done** — No further action needed
+
+If user chooses #1, simulate the hook event (e.g., for PreToolUse, attempt a matching tool call).
+</post_completion_menu>

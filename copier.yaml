@@ -4,6 +4,9 @@
 _min_copier_version: "9.0.0"
 _subdirectory: template_root
 _answers_file: .copier-answers.yml
+_envops:
+  trim_blocks: true
+  lstrip_blocks: true
 
 # Template version - update on each release
 _version: "0.1.0"

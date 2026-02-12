@@ -297,7 +297,8 @@ Choose (1-4): _
 Straightforward execution of one prompt.
 
 1. Read prompt file contents
-2. Spawn Task agent with subagent_type="general-purpose"
+2. Spawn Task agent with subagent_type="local-coder" (default for straightforward prompt generation)
+   > **Escalation:** Use `subagent_type="general-purpose"` only if the prompt requires complex multi-file orchestration, web access, non-code tasks, or meta-prompts that must control complex multi-stage AI pipelines.
 3. Include in task prompt:
    - The complete prompt contents
    - Output location: `prompts/{number}-{topic}-{purpose}/{topic}-{purpose}.md`

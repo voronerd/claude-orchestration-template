@@ -135,7 +135,9 @@ For each prompt number/name:
 <single_prompt>
 
 1. Read the complete contents of the prompt file
-2. Delegate as sub-task using Task tool with subagent_type="general-purpose"
+2. Delegate as sub-task using Task tool with subagent_type="local-coder" (default for code-focused prompts)
+   > **Escalation:** Use `subagent_type="general-purpose"` only if the prompt requires complex multi-file orchestration, web access, or non-code tasks (e.g., infrastructure provisioning, API integrations needing tool-heavy reasoning).
+   > **Ollama down?** If local-coder reports Ollama unavailable, inform the user and offer to retry with general-purpose (PAID escalation).
 3. Wait for completion
 4. Run post-run verification (step_4) BEFORE archiving
 5. Archive prompt to `prompts/completed/` with metadata

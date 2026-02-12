@@ -199,3 +199,19 @@ A production-ready MCP server has:
 - All validation checkpoints passed
 - No errors in logs
 </success_criteria>
+
+<post_completion_menu>
+After server creation completes, present:
+
+**MCP server created successfully!**
+
+What's next?
+
+1. **Test the server** — Run it and verify tools are accessible
+2. **Create a hook for this server** — Auto-start or validate on session start
+3. **Create an agent that uses this server** — Build an agent with the new tools
+4. **Done** — No further action needed
+
+If user chooses #2, invoke `/create-hooks`.
+If user chooses #3, invoke `/create-subagents`.
+</post_completion_menu>

@@ -413,7 +413,7 @@ Task(
 **Bulk task creation (orchestration):**
 ```
 Task(
-  subagent_type="general-purpose",
+  subagent_type="local-coder",  # Default: local GPU. Escalate to "general-purpose" for complex orchestration/web access.
   prompt="""
   Create 8 tasks for Wave 2 using /create-task skill.
   Read specs from: .planning/04-TASK-SPECS.md
@@ -777,7 +777,7 @@ Create prompts that orchestrate multiple agents:
 <workflow>
 <wave id="1">
   <create_tasks>
-    Task(subagent_type="general-purpose", ...)
+    Task(subagent_type="local-coder", ...)  <!-- Default: local GPU -->
   </create_tasks>
   <dependency_validation>
     Task(subagent_type="overseer", ...)

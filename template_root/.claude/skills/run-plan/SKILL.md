@@ -54,8 +54,11 @@ Log: `[run-plan] [STRATEGY] selected=${strategy} checkpoints=${count}`
 
 <step_3_execute>
 ### Strategy A: Full Delegation
-Spawn `Task(subagent_type="general-purpose")`:
+Spawn `Task(subagent_type="local-coder")`:
 "Execute plan at ${plan_path}. Read for context. Execute ALL tasks. Create SUMMARY.md. Commit: feat({phase}): [summary]"
+
+> **Escalation:** Use `subagent_type="general-purpose"` only if the plan requires complex multi-file orchestration, web access, or non-code tasks (e.g., infrastructure provisioning, API integrations needing tool-heavy reasoning).
+> **Ollama down?** If local-coder reports Ollama unavailable, inform the user and offer to retry with general-purpose (PAID escalation).
 
 ### Strategy B: Segmented
 For each segment between checkpoints:
@@ -82,4 +85,20 @@ If `services/src/` modified: "Deploy to production? (y/n)"
 ### 4. Confirm Completion
 Verify SUMMARY.md created and commit made. Report status.
 </step_4_post_verification>
+
+<post_completion_menu>
+After plan execution completes successfully, present:
+
+**Plan execution complete!**
+
+What's next?
+
+1. **Create prompt for follow-up work** — If the plan revealed additional tasks
+2. **Run another plan** — Execute the next phase if one exists
+3. **Review results** — Examine outputs before moving on
+4. **Done** — No further action needed
+
+If user chooses #1, invoke `/create-prompt` with context from the completed plan.
+If user chooses #2, invoke `/run-plan` with the next phase path.
+</post_completion_menu>
 </process>
