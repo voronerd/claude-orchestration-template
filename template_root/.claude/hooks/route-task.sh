@@ -45,6 +45,12 @@ if echo "$PROMPT" | grep -qiE "stuck|error|fail|doesn.t work|broken|debug|not wo
 - DEBUGGING: You MUST delegate to @local-orchestrator first (FREE), then @gemini-overseer only if still stuck."
 fi
 
+# Knowledge/notes tasks
+if echo "$PROMPT" | grep -qiE "note|obsidian|vault|remember|knowledge|document"; then
+  DIRECTIVES="${DIRECTIVES}
+- KNOWLEDGE: You MUST delegate to @archivist for vault management (FREE)."
+fi
+
 
 # Git operations (commit, PR, branch)
 if echo "$PROMPT" | grep -qiE "commit|pull.?request|\bPR\b|branch|git"; then
