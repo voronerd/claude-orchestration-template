@@ -51,7 +51,9 @@ Use `mcp__gemini__gemini-query` or `gemini-analyze-code`:
 - Pass code and requirements to Gemini Pro
 - Use thinkingLevel: "high" for architecture, "medium" for logic
 
-**If Gemini fails (rate limit, unavailable, error):**
+**If Gemini fails (quota exceeded, rate limit, 429, billing error, timeout, or any error):**
+
+**DO NOT retry.** Emit warning: `Gemini unavailable: [reason]. Falling back to OpenAI.`
 
 Try OpenAI as fallback:
 ```json
@@ -64,13 +66,16 @@ Try OpenAI as fallback:
 }
 ```
 
-**If both Gemini and OpenAI fail:**
+**If OpenAI also fails (quota exceeded, rate limit, 429, insufficient_quota, or any error):**
+
+**DO NOT retry.** Emit warning: `OpenAI unavailable: [reason]. Falling back to Claude.`
+
 Use Claude native reasoning with explicit warning:
 
 ```markdown
 ## Review (Claude Fallback)
 
-⚠️ **Note**: External review APIs unavailable. Using Claude native reasoning.
+**Note**: External review APIs unavailable. Using Claude native reasoning.
 
 [Continue with review]
 ```

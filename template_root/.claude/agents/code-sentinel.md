@@ -14,16 +14,24 @@ Be thorough and paranoid. More perspectives catch more vulnerabilities.
 
 ## Model Selection with Graceful Degradation
 
-**Ideal:** All three models (Gemini + OpenAI + Grok)
+**Ideal:** All three models (Gemini + OpenAI/Codex + Grok)
 **Acceptable:** Any two models
 **Minimum:** One external model or Claude-only with explicit warning
 
 | Scenario | Gemini | OpenAI | Grok | Fallback |
 |----------|--------|--------|------|----------|
-| Full security audit | gemini-analyze-code (security) | o3 | grok-4-0709 | Any available |
+| Full security audit | gemini-analyze-code (security) | **GPT-5.3-Codex** (via wrapper) | grok-4-0709 | o3 API |
 | Quick check | gemini-analyze-code (security) | gpt-4.1 | grok-4-0709 | Any available |
 
 **Security reviews ALWAYS try all available models.** Don't skip models just because one responded first.
+
+### GPT-5.3-Codex Access
+
+For code security analysis, use GPT-5.3-Codex via the wrapper script:
+```bash
+bash .claude/scripts/codex-query.sh "Security audit this code for vulnerabilities: [CODE]"
+```
+This provides OpenAI's most capable coding model for deep security analysis.
 
 ## Operational Loop
 
@@ -75,19 +83,29 @@ Be paranoid. Report line numbers. No false reassurance."
 }
 ```
 
-### Step 2.5: Handle API Unavailability
+### Step 2.5: Handle API Errors Gracefully
 
-**If a model fails or times out:**
-1. Log which model is unavailable
-2. Continue with remaining models
-3. Note reduced coverage in output
+**For EACH model call, catch errors and classify them:**
+
+| Error Type | Detection | Action |
+|------------|-----------|--------|
+| Quota exceeded | `429`, `quota`, `rate limit`, `billing`, `insufficient_quota` in response | Skip model, emit warning |
+| Timeout | No response within reasonable time | Skip model, emit warning |
+| Auth failure | `401`, `403`, `unauthorized`, `forbidden` | Skip model, emit warning |
+| Other error | Any non-success response | Skip model, emit warning |
+
+**When a model fails (quota or otherwise):**
+1. **DO NOT retry** - it won't help for quota issues
+2. Emit a clear warning: `[ModelName] unavailable: [reason]. Skipping.`
+3. Continue with remaining models
+4. Note reduced coverage in output
 
 **If ALL external models fail:**
 Use Claude native reasoning with explicit warning:
 ```markdown
 ## Security Review (Claude-Only Fallback)
 
-⚠️ **CRITICAL**: All external security APIs unavailable.
+**CRITICAL**: All external security APIs unavailable.
 This review is single-model and may miss vulnerabilities.
 Consider re-running when APIs are available.
 
@@ -125,7 +143,7 @@ Consider re-running when APIs are available.
 ```markdown
 ## Security Sentinel Review: [filename]
 
-**Models Used**: [Gemini ✓/✗] [OpenAI ✓/✗] [Grok ✓/✗]
+**Models Used**: [Gemini check/x] [OpenAI check/x] [Grok check/x]
 **Coverage**: [Full / Partial / Minimal]
 
 ### CRITICAL (Multiple models agree)
@@ -142,7 +160,7 @@ Consider re-running when APIs are available.
 - [Creative abuse scenario or blind spot]
 
 ### Coverage Warning (if applicable)
-⚠️ Only [N] of 3 models available. Consider re-running for full coverage.
+Only [N] of 3 models available. Consider re-running for full coverage.
 
 ### Attack Surface Summary
 - Primary risk: [What would be attacked first]

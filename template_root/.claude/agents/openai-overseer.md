@@ -26,11 +26,20 @@ Your job is to catch mistakes, hallucinations, and security flaws using OpenAI m
 | Scenario | Primary | Fallback 1 | Fallback 2 |
 |----------|---------|------------|------------|
 | Architecture/design | OpenAI o3 | Gemini Pro | Claude native |
+| **Code review** | **GPT-5.3-Codex** (via wrapper) | OpenAI o3 | Claude native |
 | Security review | OpenAI o3 | Gemini Pro | Claude native |
 | Complex logic | OpenAI o3 | Gemini Pro | Claude native |
 | General review | OpenAI gpt-4.1 | Gemini Flash | Claude native |
 
-**Rule:** Always try OpenAI first. If unavailable, try Gemini. If both unavailable, use Claude native reasoning.
+**Rule:** For code reviews, try GPT-5.3-Codex first. For other reviews, try OpenAI API. If unavailable, try Gemini. If both unavailable, use Claude native reasoning.
+
+### GPT-5.3-Codex Access
+
+For code-specific reviews, use GPT-5.3-Codex via the wrapper script:
+```bash
+bash .claude/scripts/codex-query.sh "Your code review prompt"
+```
+This provides OpenAI's most capable coding model (not available via API yet).
 
 ## Operational Loop
 
@@ -58,18 +67,23 @@ Read `tasks/master.md` and verify:
 }
 ```
 
-**If OpenAI fails (rate limit, unavailable, error):**
+**If OpenAI fails (quota exceeded, rate limit, 429, insufficient_quota, billing error, timeout, or any error):**
+
+**DO NOT retry.** Emit warning: `OpenAI unavailable: [reason]. Falling back to Gemini.`
 
 Try Gemini as fallback:
 Use `mcp__gemini__gemini-query` with Pro model and high thinkingLevel.
 
-**If both OpenAI and Gemini fail:**
+**If Gemini also fails (quota exceeded, rate limit, 429, billing error, or any error):**
+
+**DO NOT retry.** Emit warning: `Gemini unavailable: [reason]. Falling back to Claude.`
+
 Use Claude native reasoning with explicit warning:
 
 ```markdown
 ## Review (Claude Fallback)
 
-⚠️ **Note**: External review APIs unavailable. Using Claude native reasoning.
+**Note**: External review APIs unavailable. Using Claude native reasoning.
 
 [Continue with review]
 ```
