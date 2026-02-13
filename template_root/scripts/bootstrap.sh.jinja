@@ -52,9 +52,18 @@ if [[ "$PROJECT_ENV_FOUND" == "false" && "$TEMPLATE_ENV_FOUND" == "false" && "$H
 fi
 {% endif %}
 
-# Create .env from template if it doesn't exist
+# Copy or create .env in project directory if it doesn't exist
 if [[ ! -f .env ]]; then
-    if [[ -f .env.template ]]; then
+    # Try to copy from known locations (real keys take priority over template)
+    if [[ -f ~/claude-orchestration-template/.env ]]; then
+        cp ~/claude-orchestration-template/.env .env
+        chmod 600 .env
+        echo "Copied .env from ~/claude-orchestration-template/.env"
+    elif [[ -f ~/.env ]]; then
+        cp ~/.env .env
+        chmod 600 .env
+        echo "Copied .env from ~/.env"
+    elif [[ -f .env.template ]]; then
         cp .env.template .env
         chmod 600 .env
         echo ""
@@ -75,7 +84,7 @@ if [[ ! -f .env ]]; then
         echo "Run this script again after adding your keys."
         exit 1
     else
-        echo "Warning: No .env.template found"
+        echo "Warning: No .env file found and no .env.template to create from"
         exit 1
     fi
 fi
