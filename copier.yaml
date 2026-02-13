@@ -133,7 +133,7 @@ customize_agents:
 
 include_multi_model_overseer:
   type: bool
-  default: false
+  default: true
   help: "Include @overseer multi-model review panel? (requires Gemini + OpenAI API keys)"
   when: "{{ customize_agents }}"
 
@@ -166,6 +166,30 @@ include_janitor:
   default: true
   help: "Include @janitor cleanup agent?"
   when: "{{ customize_agents }}"
+
+include_exa:
+  type: bool
+  default: true
+  help: "Include Exa web search MCP? (requires EXA_API_KEY)"
+  when: "{{ customize_agents }}"
+
+include_context7:
+  type: bool
+  default: true
+  help: "Include Context7 library docs MCP? (no API key needed)"
+  when: "{{ customize_agents }}"
+
+has_model_router:
+  type: bool
+  default: false
+  help: "Do you have a model-router server for local LLM routing? (requires MODEL_ROUTER_URL)"
+  when: "{{ customize_agents }}"
+
+model_router_url:
+  type: str
+  default: "http://localhost:8001/v1"
+  help: "Model router API endpoint URL"
+  when: "{{ customize_agents and has_model_router }}"
 
 # =============================================================================
 # Development Environment (Only shown if customize_agents is true)

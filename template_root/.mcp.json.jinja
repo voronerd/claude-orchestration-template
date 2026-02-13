@@ -1,5 +1,6 @@
 {
   "mcpServers": {
+{% set comma = [] %}
 {% if has_local_llm %}
     "ollama": {
       "type": "stdio",
@@ -11,10 +12,12 @@
       "env": {
         "OLLAMA_HOST": "{{ ollama_endpoint }}"
       }
-    }{% if has_reasoning_model or include_multi_model_overseer %},{% endif %}
-
+    }
+{% if comma.append(1) %}{% endif %}
 {% endif %}
 {% if has_reasoning_model %}
+{% if comma %},{% endif %}
+{% if not comma %}{% if comma.append(1) %}{% endif %}{% endif %}
     "reasoning": {
       "type": "stdio",
       "command": "node",
@@ -26,10 +29,11 @@
         "REASONING_MODEL": "{{ reasoning_model_name }}",
         "REASONING_API_KEY": "${REASONING_API_KEY:-dummy}"
       }
-    }{% if include_multi_model_overseer %},{% endif %}
-
+    }
 {% endif %}
 {% if include_multi_model_overseer %}
+{% if comma %},{% endif %}
+{% if not comma %}{% if comma.append(1) %}{% endif %}{% endif %}
     "gemini": {
       "type": "stdio",
       "command": "npx",
@@ -62,7 +66,49 @@
         "GROK_API_KEY": "${GROK_API_KEY}"
       }
     }{% endif %}
-
+{% endif %}
+{% if include_exa %}
+{% if comma %},{% endif %}
+{% if not comma %}{% if comma.append(1) %}{% endif %}{% endif %}
+    "exa": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "env": {
+        "EXA_API_KEY": "${EXA_API_KEY}"
+      }
+    }
+{% endif %}
+{% if include_context7 %}
+{% if comma %},{% endif %}
+{% if not comma %}{% if comma.append(1) %}{% endif %}{% endif %}
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {}
+    }
+{% endif %}
+{% if has_model_router %}
+{% if comma %},{% endif %}
+{% if not comma %}{% if comma.append(1) %}{% endif %}{% endif %}
+    "model-router": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${PROJECT_ROOT}/mcp-servers/model-router-mcp/dist/index.js"
+      ],
+      "env": {
+        "MODEL_ROUTER_URL": "{{ model_router_url }}",
+        "OPENAI_API_KEY": "unused"
+      }
+    }
 {% endif %}
   }
 }

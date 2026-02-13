@@ -61,6 +61,9 @@ if [[ ! -f .env ]]; then
 {% if include_grok_agent %}
         echo "  Optional: GROK_API_KEY (for Grok)"
 {% endif %}
+{% if include_exa %}
+        echo "  Optional: EXA_API_KEY (for Exa web search)"
+{% endif %}
         echo ""
         echo "Run this script again after adding your keys."
         exit 1
@@ -144,6 +147,9 @@ build_mcp_server "mcp-servers/grok-mcp" "grok-mcp"
 {% endif %}
 {% if has_reasoning_model %}
 build_mcp_server "mcp-servers/reasoning-mcp" "reasoning-mcp"
+{% endif %}
+{% if has_model_router %}
+build_mcp_server "mcp-servers/model-router-mcp" "model-router-mcp"
 {% endif %}
 
 # Install pre-commit hooks
