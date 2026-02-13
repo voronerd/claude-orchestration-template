@@ -98,6 +98,48 @@ fi
 
 echo "Environment configured"
 
+# Set up .env sourcing in shell profile for MCP server env vars
+# Uses safe key=value parser (NOT shell source) to prevent code execution
+ENV_PATH="$(cd "$PROJECT_ROOT" && pwd)/.env"
+
+if [[ -f "$HOME/.profile" ]] || [[ -f "$HOME/.bashrc" ]] || [[ -f "$HOME/.zshrc" ]]; then
+    PROFILE_FILE="$HOME/.profile"
+    if ! grep -qF "$ENV_PATH" "$PROFILE_FILE" 2>/dev/null; then
+        read -p "Add API key loading to ~/.profile? [Y/n] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            cat >> "$PROFILE_FILE" << ENVBLOCK
+
+# Load API keys for Claude Code MCP servers (added by bootstrap)
+# Safe parser: only exports KEY=VALUE lines, skips comments and empty lines
+if [ -f "$ENV_PATH" ]; then
+    while IFS='=' read -r _key _val; do
+        case "\$_key" in
+            ''|\#*) continue ;;
+        esac
+        case "\$_key" in
+            *[!A-Za-z0-9_]*) continue ;;
+        esac
+        _val="\${_val%\"}"
+        _val="\${_val#\"}"
+        _val="\${_val%\'}"
+        _val="\${_val#\'}"
+        export "\$_key=\$_val"
+    done < "$ENV_PATH"
+fi
+ENVBLOCK
+            echo "Added API key loading to $PROFILE_FILE"
+            echo "  (Open a new terminal for API keys to take effect)"
+        else
+            echo "Skipped. Manually export API keys or add to your shell profile."
+        fi
+    else
+        echo "API key loading already configured in $PROFILE_FILE"
+    fi
+else
+    echo "Note: No shell profile found. Export API keys manually for MCP servers."
+fi
+
 # Create state directory
 mkdir -p .claude/.state
 echo "Created .claude/.state directory"
