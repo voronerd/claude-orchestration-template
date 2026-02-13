@@ -39,14 +39,14 @@ admin_username:
 existing_project:
   type: bool
   default: false
-  help: "Updating an existing project? (Yes = skip deployment config, LLM config always asked)"
+  help: "Updating an existing project? (Yes = skip deployment config)"
 
 # =============================================================================
 # Infrastructure Configuration
 # =============================================================================
-# NOTE: LLM questions are always asked (even for existing projects) because
-# .mcp.json is re-rendered on every copier update. Skipping these causes the
-# template to silently use defaults (e.g. localhost), breaking remote Ollama.
+# NOTE: LLM questions are always asked (even for existing projects) so answers
+# are stored in .copier-answers.yml for future updates. .mcp.json is now in
+# _skip_if_exists to protect user customizations. Delete .mcp.json to re-render.
 
 has_local_llm:
   type: bool
@@ -229,6 +229,7 @@ enable_cost_tracking:
 
 _skip_if_exists:
   - ".claude/settings.json"
+  - ".mcp.json"
 
 # =============================================================================
 # Exclusions - Never overwrite user-owned files

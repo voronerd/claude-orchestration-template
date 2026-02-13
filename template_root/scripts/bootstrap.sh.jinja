@@ -13,6 +13,12 @@ echo "Project root: $PROJECT_ROOT"
 # User indicated this is a NEW project, so we need .env from template or home directory
 TEMPLATE_ENV_FOUND=false
 HOME_ENV_FOUND=false
+PROJECT_ENV_FOUND=false
+
+# Check project directory first (copier may have created .env from .env.template)
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    PROJECT_ENV_FOUND=true
+fi
 
 # Check common template locations
 if [[ -f ~/claude-orchestration-template/.env ]]; then
@@ -23,13 +29,14 @@ if [[ -f ~/.env ]]; then
     HOME_ENV_FOUND=true
 fi
 
-if [[ "$TEMPLATE_ENV_FOUND" == "false" && "$HOME_ENV_FOUND" == "false" ]]; then
+if [[ "$PROJECT_ENV_FOUND" == "false" && "$TEMPLATE_ENV_FOUND" == "false" && "$HOME_ENV_FOUND" == "false" ]]; then
     echo ""
     echo "ERROR: No .env file found for new project setup"
     echo ""
     echo "Please create a .env file in one of these locations:"
-    echo "  1. ~/claude-orchestration-template/.env (recommended)"
-    echo "  2. ~/.env (fallback)"
+    echo "  1. $PROJECT_ROOT/.env (project directory)"
+    echo "  2. ~/claude-orchestration-template/.env"
+    echo "  3. ~/.env (fallback)"
     echo ""
     echo "Your .env should contain:"
     echo "  ANTHROPIC_API_KEY=your-key-here"
@@ -105,8 +112,12 @@ ENV_PATH="$(cd "$PROJECT_ROOT" && pwd)/.env"
 if [[ -f "$HOME/.profile" ]] || [[ -f "$HOME/.bashrc" ]] || [[ -f "$HOME/.zshrc" ]]; then
     PROFILE_FILE="$HOME/.profile"
     if ! grep -qF "$ENV_PATH" "$PROFILE_FILE" 2>/dev/null; then
-        read -p "Add API key loading to ~/.profile? [Y/n] " -n 1 -r
-        echo
+        if [[ -t 0 ]]; then
+            read -p "Add API key loading to ~/.profile? [Y/n] " -n 1 -r
+            echo
+        else
+            REPLY="y"  # Default to yes in non-interactive mode (CI, test harness)
+        fi
         if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
             cat >> "$PROFILE_FILE" << ENVBLOCK
 
@@ -223,8 +234,12 @@ fi
 if ! command -v cc &> /dev/null && ! alias cc &> /dev/null 2>&1; then
     if ! grep -q "alias cc=" ~/.bashrc ~/.zshrc ~/.bash_aliases 2>/dev/null; then
         echo ""
-        read -p "Install 'cc' alias for 'claude'? [Y/n] " -n 1 -r
-        echo
+        if [[ -t 0 ]]; then
+            read -p "Install 'cc' alias for 'claude'? [Y/n] " -n 1 -r
+            echo
+        else
+            REPLY="y"  # Default to yes in non-interactive mode
+        fi
         if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
             ./scripts/install-alias.sh
         fi
