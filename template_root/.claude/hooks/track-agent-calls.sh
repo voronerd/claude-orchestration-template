@@ -41,10 +41,16 @@ if [ -n "$description" ]; then
   echo "$description" > "$PROMPTS_DIR/${agent_id}.prompt" 2>/dev/null || true
 fi
 
-# Build event JSON (escape special chars in description)
-escaped_desc=$(echo "$description" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
-event=$(printf '{"ts":"%s","hook":"agent_start","session_id":"%s","agent_id":"%s","agent_type":"%s","model":"%s","description":"%s"}' \
-  "$timestamp" "$session_id" "$agent_id" "$agent_type" "$model" "$escaped_desc")
+# Build event JSON using jq for proper escaping (SEC-061: fixes incomplete JSON escaping)
+event=$(jq -n \
+  --arg ts "$timestamp" \
+  --arg hook "agent_start" \
+  --arg sid "$session_id" \
+  --arg aid "$agent_id" \
+  --arg atype "$agent_type" \
+  --arg model "$model" \
+  --arg desc "$description" \
+  '{ts: $ts, hook: $hook, session_id: $sid, agent_id: $aid, agent_type: $atype, model: $model, description: $desc}')
 
 # Append to events.jsonl via helper
 echo "$event" | "$HOOKS_DIR/append-event.sh" 2>/dev/null || true

@@ -15,7 +15,7 @@ PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty' 2>/dev/null)
 DIRECTIVES=""
 
 # Learning Lite: Check if we have a confident suggestion from history
-LEARNING_HINT=$("$STATE_DIR/routing-hint.sh" "$PROMPT" 2>/dev/null)
+LEARNING_HINT=$(printf '%s' "$PROMPT" | "$STATE_DIR/routing-hint.sh" 2>/dev/null)
 if [ -n "$LEARNING_HINT" ]; then
   DIRECTIVES="${DIRECTIVES}
 - LEARNING_LITE: $LEARNING_HINT"

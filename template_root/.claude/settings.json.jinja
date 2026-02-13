@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c '${PROJECT_ROOT:-.}/scripts/session-audit.sh 2>/dev/null; echo \"Session ended $(date)\" >> /tmp/claude-sessions.log'",
+            "command": "bash -c '${PROJECT_ROOT:-.}/scripts/session-audit.sh 2>/dev/null; echo \"Session ended $(date)\" >> \"${CLAUDE_STATE_DIR:-$HOME/.claude/.state}/sessions.log\"'",
             "timeout": 10
           }
         ]

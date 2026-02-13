@@ -79,9 +79,9 @@ if [ -f "$prompt_file" ]; then
   
   # Record routing (assume success=1 since agent completed without error)
   # Background process to not block hook
+  # SEC-061: Pass prompt via env var to avoid shell expansion of $() and backticks
   (
-    python3 "$STATE_DIR/memory.py" record-routing \
-      --prompt "$prompt" \
+    ROUTING_PROMPT="$prompt" python3 "$STATE_DIR/memory.py" record-routing \
       --agent "$agent_type" \
       --success 1 \
       --duration "$duration_ms" \
