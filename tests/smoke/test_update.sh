@@ -131,5 +131,13 @@ else
     exit 1
 fi
 
+# Check .env.template doesn't contain temp directory paths (copier update regression)
+if grep -q "/tmp/" .env.template 2>/dev/null; then
+    echo "FAIL: .env.template contains /tmp/ path (copier update merge conflict bug)"
+    exit 1
+else
+    echo "   OK: .env.template has no temp paths"
+fi
+
 echo ""
 echo "=== All update tests passed! ==="

@@ -114,6 +114,14 @@ fi
 
 echo "Environment configured"
 
+# Set PROJECT_ROOT dynamically in .env (avoids copier update merge conflicts)
+if grep -q "^PROJECT_ROOT=" .env; then
+    sed -i "s|^PROJECT_ROOT=.*|PROJECT_ROOT=$PROJECT_ROOT|" .env
+else
+    echo "PROJECT_ROOT=$PROJECT_ROOT" >> .env
+fi
+echo "Set PROJECT_ROOT=$PROJECT_ROOT in .env"
+
 # Set up .env sourcing in shell profile for MCP server env vars
 # Uses safe key=value parser (NOT shell source) to prevent code execution
 ENV_PATH="$(cd "$PROJECT_ROOT" && pwd)/.env"
