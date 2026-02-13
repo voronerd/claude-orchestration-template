@@ -6,6 +6,19 @@ set -e
 TEMPLATE_DIR="${TEMPLATE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TEST_DIR="${TEST_DIR:-/tmp/hooks-test-$$}"
 
+# Ensure copier is on PATH
+if ! command -v copier &> /dev/null; then
+    COPIER_PATH="$TEMPLATE_DIR/../.venv/bin/copier"
+    if [[ ! -x "$COPIER_PATH" ]]; then
+        COPIER_PATH="$HOME/.local/bin/copier"
+        if [[ ! -x "$COPIER_PATH" ]]; then
+            echo "Error: copier not found on PATH, in $TEMPLATE_DIR/../.venv/bin, or in $HOME/.local/bin"
+            exit 2
+        fi
+    fi
+    export PATH="$(dirname "$COPIER_PATH"):$PATH"
+fi
+
 # Cleanup on exit
 cleanup() {
     rm -rf "$TEST_DIR"
@@ -21,6 +34,7 @@ if [[ -z "$1" ]]; then
     echo "   Test dir: $TEST_DIR"
     copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
         --trust \
+        --defaults \
         --data project_name=hooks-test \
         --data project_description="Hook dispatcher test project" \
         --data admin_username=testuser \
@@ -51,10 +65,11 @@ cd "$PROJECT_DIR"
 # Test 1: Dispatcher scripts exist and are executable
 echo "1. Checking dispatcher scripts..."
 dispatchers=(
-    ".claude/hooks/pre-tool-use.sh"
-    ".claude/hooks/post-tool-use.sh"
-    ".claude/hooks/subagent-stop.sh"
-    ".claude/hooks/user-prompt-submit.sh"
+    ".claude/hooks/dispatcher-pre-tool-use.sh"
+    ".claude/hooks/dispatcher-post-tool-use.sh"
+    ".claude/hooks/dispatcher-subagent-stop.sh"
+    ".claude/hooks/dispatcher-user-prompt-submit.sh"
+    ".claude/hooks/dispatcher-session-start.sh"
 )
 
 for dispatcher in "${dispatchers[@]}"; do
@@ -63,72 +78,64 @@ for dispatcher in "${dispatchers[@]}"; do
 done
 echo "   OK: All dispatchers present and executable"
 
-# Test 2: Extension directories exist
-echo "2. Checking extension directories..."
-dirs=(
-    ".claude/hooks/pre-tool-use.d"
-    ".claude/hooks/post-tool-use.d"
-    ".claude/hooks/subagent-stop.d"
-    ".claude/hooks/user-prompt-submit.d"
+# Test 2: Atomic hook scripts exist
+echo "2. Checking atomic hook scripts..."
+atomic_hooks=(
+    ".claude/hooks/security-gate.sh"
+    ".claude/hooks/enforce-delegation.sh"
+    ".claude/hooks/enforce-delegation-bash.sh"
+    ".claude/hooks/route-task.sh"
+    ".claude/hooks/log-edit.sh"
 )
-for dir in "${dirs[@]}"; do
-    [[ -d "$dir" ]] || { echo "FAIL: Missing: $dir"; exit 1; }
+
+for hook in "${atomic_hooks[@]}"; do
+    [[ -f "$hook" ]] || { echo "FAIL: Missing atomic hook: $hook"; exit 1; }
 done
-echo "   OK: Extension directories present"
+echo "   OK: Atomic hook scripts present"
 
-# Test 3: Core hooks exist
-echo "3. Checking core hooks..."
-core_hooks=(
-    ".claude/hooks/pre-tool-use.d/00-core-security-gate.sh"
-    ".claude/hooks/pre-tool-use.d/01-core-enforce-delegation.sh"
-    ".claude/hooks/post-tool-use.d/00-core-log-edits.sh"
-    ".claude/hooks/subagent-stop.d/00-core-track-agents.sh"
-    ".claude/hooks/user-prompt-submit.d/00-core-route-task.sh"
-)
-for hook in "${core_hooks[@]}"; do
-    [[ -f "$hook" ]] || { echo "FAIL: Missing core hook: $hook"; exit 1; }
+# Test 3: Atomic hooks are executable
+echo "3. Checking atomic hooks are executable..."
+for hook in "${atomic_hooks[@]}"; do
+    [[ -x "$hook" ]] || { echo "FAIL: Not executable: $hook"; exit 1; }
 done
-echo "   OK: Core hooks present"
+echo "   OK: Atomic hooks are executable"
 
-# Test 4: Hook execution - create a test hook
-echo "4. Testing hook execution..."
-TEST_HOOK=".claude/hooks/pre-tool-use.d/99-test-order.sh"
-echo '#!/bin/bash
-echo "TEST_HOOK_FIRED"
-cat' > "$TEST_HOOK"
-chmod +x "$TEST_HOOK"
+# Test 4: Hook execution - verify dispatcher routes and executes hooks
+echo "4. Testing hook execution with realistic input..."
 
-# Run dispatcher with empty input and check output
-output=$(echo '{}' | .claude/hooks/pre-tool-use.sh 2>&1 || true)
-rm -f "$TEST_HOOK"
-
-if echo "$output" | grep -q "TEST_HOOK_FIRED"; then
-    echo "   OK: Custom hooks execute correctly"
-else
-    echo "   INFO: Custom hook executed but output may be suppressed"
-fi
-
-# Test 5: Exit code propagation
-echo "5. Testing exit code propagation..."
-FAIL_HOOK=".claude/hooks/pre-tool-use.d/50-fail-test.sh"
-echo '#!/bin/bash
-cat  # pass through stdin
-exit 42' > "$FAIL_HOOK"
-chmod +x "$FAIL_HOOK"
+# Create agent-usage.log so enforce-delegation passes
+echo "local-coder" > agent-usage.log
 
 set +e
-echo '{}' | .claude/hooks/pre-tool-use.sh > /dev/null 2>&1
+output=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"README.md"}}' | .claude/hooks/dispatcher-pre-tool-use.sh 2>&1)
 exit_code=$?
 set -e
 
-rm -f "$FAIL_HOOK"
+# Clean up
+rm -f agent-usage.log
 
-if [[ $exit_code -eq 42 ]]; then
-    echo "   OK: Exit codes propagate correctly"
-else
-    echo "FAIL: Exit code not propagated (got $exit_code, expected 42)"
+if [[ $exit_code -ne 0 ]]; then
+    echo "FAIL: dispatcher-pre-tool-use.sh exited with code $exit_code on valid Edit input"
     exit 1
 fi
+if [[ -z "$output" ]]; then
+    echo "FAIL: dispatcher-pre-tool-use.sh produced no output"
+    exit 1
+fi
+echo "   OK: Dispatcher routes Edit tool through hooks correctly"
+
+# Test 5: Dispatcher exits cleanly with empty JSON input
+echo "5. Testing dispatcher exit code with empty input..."
+set +e
+echo '{}' | .claude/hooks/dispatcher-pre-tool-use.sh > /dev/null 2>&1
+exit_code=$?
+set -e
+
+if [[ $exit_code -ne 0 ]]; then
+    echo "FAIL: Dispatcher exited non-zero ($exit_code) on empty input"
+    exit 1
+fi
+echo "   OK: Dispatcher exits cleanly with empty input"
 
 echo ""
 echo "=== All hook tests passed! ==="

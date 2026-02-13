@@ -6,6 +6,18 @@ set -e
 TEMPLATE_DIR="${TEMPLATE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TEST_DIR="${TEST_DIR:-/tmp/update-test-$$}"
 
+# Check if copier is on PATH, otherwise try to find it in fallback locations
+if ! command -v copier &> /dev/null; then
+    if [[ -x "$TEMPLATE_DIR/../.venv/bin/copier" ]]; then
+        PATH="$TEMPLATE_DIR/../.venv/bin:$PATH"
+    elif [[ -x "$HOME/.local/bin/copier" ]]; then
+        PATH="$HOME/.local/bin:$PATH"
+    else
+        echo "Error: copier not found on PATH or in fallback locations."
+        exit 2
+    fi
+fi
+
 echo "=== Smoke Test: Copier Update ==="
 echo "   Template: $TEMPLATE_DIR"
 echo "   Test dir: $TEST_DIR"
@@ -21,6 +33,7 @@ trap cleanup EXIT
 echo "1. Creating initial project..."
 copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
     --trust \
+    --defaults \
     --data project_name=update-test \
     --data project_description="Update test project" \
     --data admin_username=testuser \
@@ -46,12 +59,12 @@ echo "   OK: Project created"
 # Step 2: Add user customizations
 echo "2. Adding user customizations..."
 
-# Custom hook in .d directory
-mkdir -p .claude/hooks/pre-tool-use.d
+# Custom hook as standalone file (outside template-managed paths)
+mkdir -p .claude/hooks
 echo '#!/bin/bash
 echo "USER_CUSTOM_HOOK"
-cat' > .claude/hooks/pre-tool-use.d/50-user-custom.sh
-chmod +x .claude/hooks/pre-tool-use.d/50-user-custom.sh
+cat' > .claude/hooks/user-custom-hook.sh
+chmod +x .claude/hooks/user-custom-hook.sh
 
 # Custom .env
 cp .env .env.bak 2>/dev/null || true
@@ -68,6 +81,7 @@ echo "3. Running copier update..."
 cd "$TEST_DIR"
 copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
     --trust \
+    --defaults \
     --force \
     --data project_name=update-test \
     --data project_description="Update test project" \
@@ -95,7 +109,7 @@ echo "   OK: Update completed"
 echo "4. Verifying customizations preserved..."
 
 # Check custom hook
-if [[ -f ".claude/hooks/pre-tool-use.d/50-user-custom.sh" ]]; then
+if [[ -f ".claude/hooks/user-custom-hook.sh" ]]; then
     echo "   OK: Custom hook preserved"
 else
     echo "FAIL: Custom hook was deleted"

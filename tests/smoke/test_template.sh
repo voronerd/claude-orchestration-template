@@ -3,8 +3,21 @@
 
 set -e
 
-TEMPLATE_DIR="${TEMPLATE_DIR:-$(dirname "$0")/../..}"
+TEMPLATE_DIR="${TEMPLATE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 TEST_DIR="${TEST_DIR:-/tmp/smoke-test-$$}"
+
+# Ensure copier is available on PATH
+if ! command -v copier &> /dev/null; then
+    COPIER_PATH="$TEMPLATE_DIR/../.venv/bin/copier"
+    if [[ ! -x "$COPIER_PATH" ]]; then
+        COPIER_PATH="$HOME/.local/bin/copier"
+        if [[ ! -x "$COPIER_PATH" ]]; then
+            echo "ERROR: copier not found on PATH and not found in $TEMPLATE_DIR/../.venv/bin or $HOME/.local/bin"
+            exit 2
+        fi
+    fi
+    export PATH="$(dirname "$COPIER_PATH"):$PATH"
+fi
 
 echo "=== Smoke Test: Template Validation ==="
 echo "   Template: $TEMPLATE_DIR"
@@ -21,6 +34,7 @@ trap cleanup EXIT
 echo "1. Testing copier copy..."
 copier copy "$TEMPLATE_DIR" "$TEST_DIR" \
     --trust \
+    --defaults \
     --data project_name=smoke-test \
     --data project_description="Smoke test project" \
     --data admin_username=testuser \
@@ -60,7 +74,33 @@ required_files=(
     ".claude/agents/reviewer.md"
     ".claude/agents/integration-check.md"
     ".claude/agents/janitor.md"
-    ".claude/hooks/pre-tool-use.sh"
+    ".claude/agents/lite-general.md"
+    ".claude/agents/local-git.md"
+    ".claude/agents/local-orchestrator.md"
+    ".claude/agents/local-reviewer.md"
+    ".claude/agents/local-scribe.md"
+    ".claude/agents/archivist.md"
+    ".claude/agents/codex-coder.md"
+    ".claude/agents/openai-overseer.md"
+    ".claude/hooks/dispatcher-pre-tool-use.sh"
+    ".claude/hooks/dispatcher-post-tool-use.sh"
+    ".claude/hooks/dispatcher-subagent-stop.sh"
+    ".claude/hooks/dispatcher-user-prompt-submit.sh"
+    ".claude/hooks/dispatcher-session-start.sh"
+    ".claude/hooks/security-gate.sh"
+    ".claude/hooks/enforce-delegation.sh"
+    ".claude/hooks/enforce-delegation-bash.sh"
+    ".claude/hooks/enforce-skill-usage.sh"
+    ".claude/hooks/inject-ollama-reminder.sh"
+    ".claude/hooks/block-local-coder-model.sh"
+    ".claude/hooks/log-sentinel-review.sh"
+    ".claude/hooks/append-event.sh"
+    ".claude/hooks/track-model-calls.sh"
+    ".claude/hooks/check-onboarding.sh"
+    ".claude/hooks/route-task.sh"
+    ".claude/hooks/log-agent.sh"
+    ".claude/hooks/track-agent-calls.sh"
+    ".claude/hooks/log-edit.sh"
     ".env.template"
     "scripts/bootstrap.sh"
     "tasks/templates/task_spec.md"
@@ -110,7 +150,7 @@ echo "   OK: settings.json is valid JSON"
 # Test 5: Scripts are executable
 echo "5. Checking script permissions..."
 [[ -x "scripts/bootstrap.sh" ]] || { echo "FAIL: bootstrap.sh not executable"; exit 1; }
-[[ -x ".claude/hooks/pre-tool-use.sh" ]] || { echo "FAIL: pre-tool-use.sh not executable"; exit 1; }
+[[ -x ".claude/hooks/dispatcher-pre-tool-use.sh" ]] || { echo "FAIL: dispatcher-pre-tool-use.sh not executable"; exit 1; }
 echo "   OK: Scripts are executable"
 
 # Test 6: Gitignore configured
@@ -121,10 +161,11 @@ echo "   OK: Gitignore configured correctly"
 # Test 7: Hook dispatchers exist
 echo "7. Checking hook dispatchers..."
 dispatchers=(
-    ".claude/hooks/pre-tool-use.sh"
-    ".claude/hooks/post-tool-use.sh"
-    ".claude/hooks/subagent-stop.sh"
-    ".claude/hooks/user-prompt-submit.sh"
+    ".claude/hooks/dispatcher-pre-tool-use.sh"
+    ".claude/hooks/dispatcher-post-tool-use.sh"
+    ".claude/hooks/dispatcher-subagent-stop.sh"
+    ".claude/hooks/dispatcher-user-prompt-submit.sh"
+    ".claude/hooks/dispatcher-session-start.sh"
 )
 for d in "${dispatchers[@]}"; do
     [[ -f "$d" ]] || { echo "FAIL: Missing dispatcher: $d"; exit 1; }
@@ -141,7 +182,7 @@ forbidden_patterns=(
 )
 
 for pattern in "${forbidden_patterns[@]}"; do
-    if grep -rE "$pattern" . --include="*.md" --include="*.sh" --include="*.json" 2>/dev/null | grep -v ".git" | grep -v ".copier-answers"; then
+    if grep -rE "$pattern" . --include="*.md" --include="*.sh" --include="*.json" --exclude-dir=.git 2>/dev/null | grep -v ".copier-answers"; then
         echo "FAIL: Forbidden pattern '$pattern' found in output"
         exit 1
     fi
