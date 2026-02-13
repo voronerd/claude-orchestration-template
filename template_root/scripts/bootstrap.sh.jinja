@@ -136,8 +136,15 @@ build_mcp_server() {
 }
 
 # Build each MCP server independently (failures are non-fatal)
+{% if include_multi_model_overseer %}
 build_mcp_server "mcp-servers/openai-mcp" "openai-mcp"
+{% if include_grok_agent %}
 build_mcp_server "mcp-servers/grok-mcp" "grok-mcp"
+{% endif %}
+{% endif %}
+{% if has_reasoning_model %}
+build_mcp_server "mcp-servers/reasoning-mcp" "reasoning-mcp"
+{% endif %}
 
 # Install pre-commit hooks
 {% if include_pre_commit %}
