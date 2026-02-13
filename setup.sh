@@ -81,7 +81,7 @@ if ! command -v node &> /dev/null; then
     echo "Installing Node.js..."
     if command -v apt &> /dev/null; then
         # Install via NodeSource for recent version
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
         sudo apt install -y nodejs
     else
         echo "Please install Node.js manually: https://nodejs.org/"
