@@ -58,3 +58,6 @@ htmlcov/
 
 # Debug artifacts
 .debug-archive/
+
+# Plan execution progress (transient, resume artifact)
+.progress.json

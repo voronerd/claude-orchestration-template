@@ -359,6 +359,45 @@ my-new-project/
 └── README.md
 ```
 
+## Plan Execution & Resume
+
+Plans are executed via `/run-plan <path-to-PLAN.md>`. The skill supports interruption and cross-session resume.
+
+### How It Works
+
+During execution, a `.progress.json` file is written alongside the plan after each task completes:
+
+```json
+{
+  "plan": "04-01-PLAN.md",
+  "started": "2026-02-14T10:00:00Z",
+  "tasks_completed": ["Task 1: Create config schema", "Task 2: Add validation"],
+  "last_completed": "Task 2: Add validation",
+  "status": "in_progress"
+}
+```
+
+### Resuming an Interrupted Plan
+
+When you invoke `/run-plan` on a plan that was previously interrupted:
+
+1. **Auto-detection**: The skill checks for `.progress.json` in the plan directory
+2. **Status display**: Shows completed vs remaining tasks
+3. **User choice**: Resume from where you left off, restart from scratch, or abort
+4. **Selective execution**: Only remaining tasks are delegated to subagents
+
+### Optional: whats-next.md Context
+
+If you ran `/whats-next` before ending the previous session and the resulting `whats-next.md` is in the plan directory, the resume will also ingest the `<work_remaining>` and `<critical_context>` sections. This provides error history, decisions made, and failed approaches from the previous attempt without flooding the context window.
+
+### Artifact Lifecycle
+
+| Artifact | Created | Consumed | Cleaned Up |
+|----------|---------|----------|------------|
+| `.progress.json` | During execution (per task) | On resume | Deleted on successful completion |
+| `whats-next.md` | Manually via `/whats-next` | On resume (optional) | Not auto-deleted |
+| `SUMMARY.md` | On plan completion | By downstream plans | Never (permanent record) |
+
 ## Documentation
 
 | Document | Purpose |
