@@ -1,6 +1,6 @@
 ---
 name: create-meta-prompts
-description: Create optimized prompts for Claude-to-Claude pipelines with research, planning, and execution stages. Use when building prompts that produce outputs for other prompts to consume, or when running multi-stage workflows (research -> plan -> implement).
+description: Create optimized prompts for Claude-to-Claude pipelines with research, planning, and execution stages. Supports chain resume via .progress.json. Use when building prompts that produce outputs for other prompts to consume, or when running multi-stage workflows (research -> plan -> implement).
 allowed-tools: [Read, Write, Bash, Glob, Task, AskUserQuestion]
 ---
 
@@ -106,6 +106,36 @@ Next prompt number: !`ls -d ./prompts/*/ 2>/dev/null`
 
 <step_0_intake_gate>
 <title>Adaptive Requirements Gathering</title>
+
+<resume_detection>
+**BEFORE anything else**, check for interrupted execution:
+
+1. Check if `prompts/.progress.json` exists
+2. If found, read it:
+```json
+{
+  "chain": ["001-auth-research", "002-auth-plan", "003-auth-implement"],
+  "completed": ["001-auth-research"],
+  "last_completed": "001-auth-research",
+  "status": "interrupted",
+  "started": "2026-02-14T10:00:00Z"
+}
+```
+3. Display to user:
+```
+Interrupted prompt chain detected.
+Completed: 001-auth-research
+Remaining: 002-auth-plan, 003-auth-implement
+```
+4. Ask: "Resume chain from 002-auth-plan? (y/restart/new prompt)"
+   - If resume: set `resume_mode=true`, skip to step_3 with remaining prompts
+   - If restart: delete `.progress.json`, re-execute full chain
+   - If new prompt: ignore progress, proceed to intake normally
+
+5. If `whats-next.md` exists in `prompts/` and `resume_mode=true`:
+   Extract `<work_remaining>` and `<critical_context>` sections only.
+   Pass as `resume_context` to the execution engine.
+</resume_detection>
 
 <critical_first_action>
 **BEFORE analyzing anything**, check if context was provided.
@@ -292,6 +322,22 @@ Choose (1-4): _
 <step_3_execute>
 <title>Execution Engine</title>
 
+<progress_tracking>
+**ALL execution modes** must write/update `prompts/.progress.json` after each prompt completes:
+```json
+{
+  "chain": ["001-auth-research", "002-auth-plan", "003-auth-implement"],
+  "completed": ["001-auth-research", "002-auth-plan"],
+  "last_completed": "002-auth-plan",
+  "status": "in_progress",
+  "started": "2026-02-14T10:00:00Z"
+}
+```
+- On full chain completion: set `"status": "completed"`, then delete the file
+- On error: set `"status": "error"`, leave file in place for resume
+- Single prompts: `chain` and `completed` are single-element arrays
+</progress_tracking>
+
 <execution_modes>
 <single_prompt>
 Straightforward execution of one prompt.
@@ -312,14 +358,17 @@ Straightforward execution of one prompt.
 For chained prompts where each depends on previous output.
 
 1. Build execution queue from dependency order
-2. For each prompt in queue:
+2. If `resume_mode=true`: filter queue to only prompts NOT in `.progress.json` `completed` list
+3. For each prompt in queue:
    a. Read prompt file
-   b. Spawn Task agent
+   b. Spawn Task agent (if `resume_context` exists, append to prompt)
    c. Wait for completion
    d. Validate output
-   e. If validation fails → stop, report failure, offer recovery options
-   f. If success → archive prompt, continue to next
-3. Report consolidated results
+   e. Update `prompts/.progress.json` (add to completed list)
+   f. If validation fails → set status to "error", stop, report failure, offer recovery options
+   g. If success → archive prompt, continue to next
+4. On full completion: delete `prompts/.progress.json`
+5. Report consolidated results
 
 <progress_reporting>
 Show progress during execution:
