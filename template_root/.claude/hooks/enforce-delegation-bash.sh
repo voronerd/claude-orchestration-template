@@ -42,22 +42,22 @@ detect_code_write() {
     fi
 
     # Pattern 1: Redirect to code file
-    if [[ "$cmd" =~ \>[[:space:]]*[^[:space:]]+\.($CODE_EXT) ]]; then
+    if [[ "$cmd" =~ \>[[:space:]]*[^[:space:]]+\.($CODE_EXT)([^a-zA-Z0-9_]|$) ]]; then
         is_tmp_path "${BASH_REMATCH[0]}" && return 1
         return 0
     fi
 
     # Pattern 2-5: heredocs, tee, curl/wget, mv/cp
-    [[ "$cmd" =~ \<\<.*EOF && "$cmd" =~ \.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ tee.*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ (curl.*-o|wget.*-O).*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ (mv|cp)[[:space:]].*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ \<\<.*EOF && "$cmd" =~ \.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ tee.*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ (curl.*-o|wget.*-O).*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ (mv|cp)[[:space:]].*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
 
     # Fix 6: Additional write patterns - sed -i, awk, dd, install
-    [[ "$cmd" =~ sed[[:space:]]+-i.*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ awk.*\>.*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ dd[[:space:]].*of=.*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
-    [[ "$cmd" =~ install[[:space:]].*\.($CODE_EXT) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ sed[[:space:]]+-i.*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ awk.*\>.*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ dd[[:space:]].*of=.*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
+    [[ "$cmd" =~ install[[:space:]].*\.($CODE_EXT)([^a-zA-Z0-9_]|$) && ! "$cmd" =~ /tmp/ ]] && return 0
 
     # Pattern 7: Interpreter file writes
     if [[ "$cmd" =~ (python3?|node|ruby|perl|php)[[:space:]]+-[ce][[:space:]] ]]; then
